@@ -46,7 +46,7 @@
 (()=>{
   const root=document.getElementById('ozk');
   const el={empty:document.getElementById('empty'),slide:document.getElementById('slide'),group:document.getElementById('group'),online:document.getElementById('online'),time:document.getElementById('time'),label:document.getElementById('label'),profile:document.getElementById('profile'),tickets:document.getElementById('tickets'),dots:document.getElementById('dots')};
-  let groups=[],index=0,rotateSeconds=5,showTickets=true,showOnline=true,timer=null;
+  let groups=[],index=0,rotateSeconds=5,showTickets=true,showOnline=true,globalTicketCodes=0,timer=null;
 
   function send(op){
     const value=JSON.stringify({op});
@@ -92,8 +92,8 @@
     el.online.textContent=showOnline?`${Number(g.online)||0}/${Number(g.total)||0}`:'';
     el.tickets.style.display=showTickets?'block':'none';
     if(showTickets){
-      const n=Number(g.tickets)||0, mins=Number(g.ticketMinutes)||0;
-      el.tickets.textContent=`Tickets: ${n}${mins>0?` · ${mins} min aktiv`:''}`;
+      const extra=Number(g.activeExtraMax)||0;
+      el.tickets.textContent=`${extra>0?`+Zeit bis ${extra} min · `:''}Ticketcodes: ${globalTicketCodes}`;
     }
     renderDots();applySizing();
   }
@@ -108,6 +108,7 @@
     groups=Array.isArray(data.groups)?data.groups:[];
     rotateSeconds=Math.max(2,Number(data.rotateSeconds)||5);
     showTickets=data.showTickets!==false;
+    globalTicketCodes=Number(data.globalTicketCodes)||0;
     showOnline=data.showOnlineCount!==false;
     const found=groups.findIndex(g=>g.group===keepName);index=found>=0?found:0;
     render();restartTimer();

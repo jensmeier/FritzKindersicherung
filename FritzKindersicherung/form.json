@@ -54,12 +54,17 @@
       "items": [
         {
           "type": "CheckBox",
+          "name": "EnableParentPopup",
+          "caption": "Popup-Elternansicht verwenden"
+        },
+        {
+          "type": "CheckBox",
           "name": "AutoOpenParentPopup",
-          "caption": "Nach korrekter PIN Elternansicht automatisch als Popup/Fenster öffnen"
+          "caption": "Nach korrekter PIN Popup automatisch öffnen"
         },
         {
           "type": "Label",
-          "caption": "BUILD16: Die Elternansicht wird direkt vom 2x2-PIN-Feld geöffnet. Keine zweite Symcon-Visualisierung nötig. Auf Fully Kiosk müssen Popups/neue Fenster erlaubt sein."
+          "caption": "Wenn die Popup-Funktion ausgeschaltet ist, bleibt die PIN-Kachel in der normalen 2x2-Ansicht. Bei eingeschalteter Funktion müssen Popups in Fully Kiosk/Browser erlaubt sein."
         }
       ]
     },
@@ -144,19 +149,22 @@
           "caption": "Status",
           "name": "Status",
           "width": "90px",
-          "add": "manuell"
+          "add": "manuell",
+          "save": true
         },
         {
           "caption": "Verbindung",
           "name": "Interface",
           "width": "95px",
-          "add": ""
+          "add": "",
+          "save": true
         },
         {
           "caption": "FRITZ!-Profil",
           "name": "Profile",
           "width": "160px",
-          "add": ""
+          "add": "",
+          "save": true
         }
       ],
       "values": []
@@ -165,7 +173,7 @@
   "actions": [
     {
       "type": "Label",
-      "caption": "BUILD16: Elternansicht als Popup. Keine separate Eltern-Visualisierung erforderlich."
+      "caption": "BUILD17: Popup schaltbar; Ticket-/Zusatzzeit-Anzeige korrigiert; Geräte-Metadaten werden gespeichert."
     },
     {
       "type": "Button",

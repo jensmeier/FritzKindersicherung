@@ -168,6 +168,8 @@ let redirectPending=false;
 let parentPopup=null;
 let popupWatch=null;
 let popupOpeningForPin=false;
+let popupEnabled=__FKS_POPUP_ENABLED__;
+let popupAutoOpen=__FKS_POPUP_AUTO__;
 const clientId=getClientId();
 const browserKey=getBrowserKey();
 
@@ -355,6 +357,7 @@ function writePopupPending(w){
   }catch(e){}
 }
 function prepareParentPopup(){
+  if(!popupEnabled || !popupAutoOpen) return false;
   popupOpeningForPin=true;
   try{
     if(parentPopup && !parentPopup.closed){ parentPopup.focus(); writePopupPending(parentPopup); return true; }
@@ -404,7 +407,7 @@ function popupDocumentHtml(data){
   const summaries=buildSummaries(data);
   const profiles=data.profiles||[];
   const by={}; (data.devices||[]).forEach(d=>{ const g=d.group||'Geräte'; (by[g]??=[]).push(d); });
-  let overview=summaries.map(s=>`<div class="sum"><b>${popupEsc(s.group)}</b><span class="rest">${s.rest===null?'—':popupEsc(fmt(s.rest))}</span><small>${popupEsc(s.profile||'mehrere/kein Profil')} · Tickets ${s.ticketCount} · ${s.online}/${s.total} aktiv</small></div>`).join('');
+  let overview=summaries.map(s=>`<div class="sum"><b>${popupEsc(s.group)}</b><span class="rest">${s.rest===null?'—':popupEsc(fmt(s.rest))}</span><small>${popupEsc(s.profile||'mehrere/kein Profil')} · ${s.activeExtraMax?`Zusatzzeit bis ${s.activeExtraMax} min · `:''}${s.online}/${s.total} aktiv</small></div>`).join('');
   let tickets='';
   (data.issuedTickets||[]).forEach(t=>{ tickets+=`<span class="code${t.status==='marked'?'':' used'}">${popupEsc(t.id)}${t.status==='marked'?'':' · benutzt/ungültig'}</span>`; });
   if(!tickets) tickets='<span class="muted">Noch kein Ticketcode über Symcon erzeugt.</span>';
@@ -412,19 +415,22 @@ function popupDocumentHtml(data){
   Object.entries(by).forEach(([g,devs])=>{
     const sum=summaries.find(x=>x.group===g)||groupSummary(g,devs);
     let headSelect=profiles.length?`<select class="profile group-profile" data-fks-op="group_profile" data-fks-group="${encodeURIComponent(g)}"><option value="">Profil für alle …</option>${profiles.map(p=>`<option value="${popupEsc(p.id)}">${popupEsc(p.name)}</option>`).join('')}</select>`:'';
+    const sharedTarget=sharedBudgetTicketTarget(devs);
+    const sharedAdd=sharedTarget?popupActionButton('Gemeinsames Budget +45','add_ticket_time',{ip:sharedTarget.ip,label:g,shared:true},'ticket',data.readOnly||sharedTarget.disallow===true,'Die FRITZ!Box führt dieses Profil als gemeinsames Budget. Auf deiner 5690 Pro wird die Zusatzzeit profilweit gespiegelt.'):'';
     let rows='';
     devs.forEach(d=>{
       const st=statusFor(d); const n=Number(d.ticketsInAdvance)||0, valid=Number(d.ticketValid)||0;
       const disabled=data.readOnly; const noTicket=disabled||Number(d.timeMax)<=0||d.disallow===true;
       const ps=profiles.length?`<select class="profile device-profile" data-fks-op="set_profile" data-fks-ip="${encodeURIComponent(d.ip||'')}">${popupOptions(profiles,d.profileId||'',d.profile||'Profil wählen')}</select>`:`<span>${popupEsc(d.profile||'—')}</span>`;
-      rows+=`<div class="device"><div class="info"><b>${popupEsc(d.name||'Gerät')}</b><div class="meta">${popupEsc(d.ip||'')} · ${ps}</div></div><div class="state"><span class="dot ${st.cls}"></span>${popupEsc(st.text)}</div><div class="ticketstate">Tickets: <b>${n}</b><small>${valid?`${valid} min aktiv`:(Number(d.timeMax)>0?' +45 min möglich':' kein Zeitbudget')}</small></div><div class="actions">${popupActionButton('+45 min','add_ticket_time',{ip:d.ip},'ticket',noTicket)}${popupActionButton('Sperren','set_disallow',{ip:d.ip,disallow:true},'danger',disabled)}${popupActionButton('Freigeben','set_disallow',{ip:d.ip,disallow:false},'ok',disabled)}</div></div>`;
+      const addButton=sharedTarget?'':popupActionButton('+45 min','add_ticket_time',{ip:d.ip,label:d.name||'Gerät',shared:false},'ticket',noTicket,'45 Minuten Zusatzzeit für dieses Gerät');
+      rows+=`<div class="device"><div class="info"><b>${popupEsc(d.name||'Gerät')}</b><div class="meta">${popupEsc(d.ip||'')} · ${ps}</div></div><div class="state"><span class="dot ${st.cls}"></span>${popupEsc(st.text)}</div><div class="ticketstate">Zusatzzeit: <b>${valid?valid+' min':'keine'}</b><small>${n>0?`${n} vorgemerkt`:(Number(d.timeMax)>0?(d.isTimeShared?' gemeinsames Budget':' pro Gerät'):' kein Zeitbudget')}</small></div><div class="actions">${addButton}${popupActionButton('Sperren','set_disallow',{ip:d.ip,disallow:true},'danger',disabled)}${popupActionButton('Freigeben','set_disallow',{ip:d.ip,disallow:false},'ok',disabled)}</div></div>`;
     });
-    groups+=`<section class="card"><div class="ghead"><h2>${popupEsc(g)}</h2><span class="gbudget">${sum.rest===null?'Budget —':'Rest '+popupEsc(fmt(sum.rest))}</span>${headSelect}${popupActionButton('Alle sperren','group_disallow',{group:g,disallow:true},'danger',data.readOnly)}${popupActionButton('Alle freigeben','group_disallow',{group:g,disallow:false},'ok',data.readOnly)}</div>${rows}</section>`;
+    groups+=`<section class="card"><div class="ghead"><h2>${popupEsc(g)}</h2><span class="gbudget">${sum.rest===null?'Budget —':'Rest '+popupEsc(fmt(sum.rest))}</span>${headSelect}${sharedAdd}${popupActionButton('Alle sperren','group_disallow',{group:g,disallow:true},'danger',data.readOnly)}${popupActionButton('Alle freigeben','group_disallow',{group:g,disallow:false},'ok',data.readOnly)}</div>${rows}</section>`;
   });
   const mode=data.readOnly?'TEST · nur lesen':'STEUERUNG AKTIV';
   const css=`*{box-sizing:border-box}body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#f3f4f6;color:#17191c}header{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:10px;padding:12px 18px;background:white;border-bottom:1px solid #ddd}header h1{font-size:20px;margin:0;flex:1}.badge{padding:7px 10px;border-radius:18px;background:#e8e8e8;font-size:12px}.badge.warn{background:#bf7700;color:white}button,select{min-height:42px;border:1px solid #d5d7da;border-radius:10px;background:#eee;padding:8px 12px;font-size:15px}button{cursor:pointer}button:disabled,select:disabled{opacity:.45;cursor:not-allowed}.danger{background:#e8a2a4}.ok{background:#9fd0ba}.ticket{background:#a9c9ef}.wrap{padding:14px;max-width:1500px;margin:auto}.message{margin:0 0 10px;color:#555}.overview{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin-bottom:10px}.sum{background:white;border:1px solid #ddd;border-radius:12px;padding:12px}.sum b,.sum small,.sum .rest{display:block}.sum .rest{font-size:28px;font-weight:700;margin:5px 0}.sum small,.muted,.meta,.ticketstate small{color:#666}.tickets{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:white;border:1px solid #ddd;border-radius:12px;padding:10px;margin-bottom:10px}.code{font-family:monospace;background:#eef4ff;border-radius:8px;padding:7px 9px}.code.used{text-decoration:line-through;opacity:.6}.card{background:white;border:1px solid #d8dade;border-radius:12px;margin-bottom:12px;overflow:hidden}.ghead{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px;border-bottom:1px solid #ddd}.ghead h2{margin:0;flex:1;min-width:140px;font-size:18px}.gbudget{font-weight:700}.profile{max-width:210px}.device{display:grid;grid-template-columns:minmax(220px,1.5fr) minmax(160px,.8fr) minmax(150px,.7fr) auto;gap:10px;align-items:center;padding:10px;border-bottom:1px solid #eee}.device:last-child{border-bottom:0}.info b{display:block;margin-bottom:5px}.meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.state{white-space:nowrap}.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px}.dot.on{background:#22a46b}.dot.off{background:#d65757}.dot.err{background:#cf9700}.ticketstate small{display:block}.actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}@media(max-width:800px){header{padding:9px}header h1{font-size:17px}.wrap{padding:8px}.device{grid-template-columns:1fr;gap:6px}.actions{justify-content:flex-start}.ghead{align-items:flex-start}.profile{max-width:100%;width:100%}}`;
-  const script=`(()=>{const send=(op,payload={})=>{try{window.opener.postMessage({source:'FKS_PARENT_POPUP',op,payload},'*')}catch(e){}};document.addEventListener('click',e=>{const b=e.target.closest('[data-fks-op]');if(!b||b.disabled)return;let p={};try{p=JSON.parse(decodeURIComponent(b.dataset.fksPayload||'%7B%7D'))}catch(x){}send(b.dataset.fksOp,p)});document.addEventListener('change',e=>{const s=e.target;if(!(s instanceof HTMLSelectElement)||!s.dataset.fksOp||!s.value)return;if(s.dataset.fksOp==='set_profile')send('set_profile',{ip:decodeURIComponent(s.dataset.fksIp||''),profileId:s.value});if(s.dataset.fksOp==='group_profile')send('group_profile',{group:decodeURIComponent(s.dataset.fksGroup||''),profileId:s.value})});document.getElementById('refresh').addEventListener('click',()=>send('refresh'));document.getElementById('lockclose').addEventListener('click',()=>{send('lock');window.close()});})();`;
-  return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>FRITZ!Box Elternansicht</title><style>${css}</style></head><body><header><h1>FRITZ!Box Elternansicht</h1><span class="badge${data.readOnly?' warn':''}">${popupEsc(mode)}</span><button id="refresh" type="button">↻ Aktualisieren</button><button id="lockclose" type="button">↙ Zurück & sperren</button></header><main class="wrap"><div class="message">${popupEsc(data.message||'')}</div><div class="overview">${overview}</div><div class="tickets"><b>Ticketcodes:</b>${tickets}${popupActionButton('Ticketcode holen','mark_ticket',{},'ticket',data.readOnly)}</div>${groups||'<div class="card" style="padding:14px">Noch keine Geräte konfiguriert.</div>'}</main><script>${script}<\/script></body></html>`;
+  const script=`(()=>{const send=(op,payload={})=>{try{window.opener.postMessage({source:'FKS_PARENT_POPUP',op,payload},'*')}catch(e){}};document.addEventListener('click',e=>{const b=e.target.closest('[data-fks-op]');if(!b||b.disabled)return;let p={};try{p=JSON.parse(decodeURIComponent(b.dataset.fksPayload||'%7B%7D'))}catch(x){}const op=b.dataset.fksOp;if(op==='add_ticket_time'){const label=p.label||'Gerät';const text=p.shared?'Wirklich +45 Minuten für das gemeinsame Budget von '+label+' vergeben? Das kann mehrere Geräte betreffen. Eine direkte -45-Minuten-Funktion gibt es nicht.':'Wirklich +45 Minuten Zusatzzeit für '+label+' vergeben? Eine direkte -45-Minuten-Funktion gibt es nicht.';if(!window.confirm(text))return;delete p.label;delete p.shared;}send(op,p)});document.addEventListener('change',e=>{const s=e.target;if(!(s instanceof HTMLSelectElement)||!s.dataset.fksOp||!s.value)return;if(s.dataset.fksOp==='set_profile')send('set_profile',{ip:decodeURIComponent(s.dataset.fksIp||''),profileId:s.value});if(s.dataset.fksOp==='group_profile')send('group_profile',{group:decodeURIComponent(s.dataset.fksGroup||''),profileId:s.value})});document.getElementById('refresh').addEventListener('click',()=>send('refresh'));document.getElementById('lockclose').addEventListener('click',()=>{send('lock');window.close()});})();`;
+  return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>FRITZ!Box Elternansicht</title><style>${css}</style></head><body><header><h1>FRITZ!Box Elternansicht</h1><span class="badge${data.readOnly?' warn':''}">${popupEsc(mode)}</span><button id="refresh" type="button">↻ Aktualisieren</button><button id="lockclose" type="button">↙ Zurück & sperren</button></header><main class="wrap"><div class="message">${popupEsc(data.message||'')}</div><div class="overview">${overview}</div><div class="tickets"><b>Freie Ticketcodes (global):</b>${tickets}${popupActionButton('Neuen 45-min-Ticketcode holen','mark_ticket',{},'ticket',data.readOnly)}<span class="muted">Codes werden erst beim Einlösen an fritz.box einem Gerät zugeordnet.</span></div>${groups||'<div class="card" style="padding:14px">Noch keine Geräte konfiguriert.</div>'}</main><script>${script}<\/script></body></html>`;
 }
 function renderParentPopup(data){
   if(!data) return false;
@@ -454,8 +460,8 @@ window.addEventListener('message',e=>{
 });
 function submitPin(){
   if(pin.length<4){ document.getElementById('lockmsg').textContent='Mindestens 4 Ziffern.'; return; }
-  // Wichtig: Popup synchron zum OK-Tipp öffnen, sonst blockieren Browser/Fully Kiosk es.
-  prepareParentPopup();
+  // Popup nur bei aktivierter Automatik synchron zum OK-Tipp öffnen.
+  if(popupEnabled && popupAutoOpen) prepareParentPopup();
   send('unlock',{pin,sourceVisualizationId:0}); pin=''; paintDots();
 }
 function setLocked(message=''){
@@ -489,7 +495,7 @@ function act(ip,disallow){ if(unlocked) send('set_disallow',{ip,disallow}); }
 function groupAct(group,disallow){ if(unlocked) send('group_disallow',{group,disallow}); }
 function setProfile(ip,profileId){ if(unlocked&&profileId) send('set_profile',{ip,profileId}); }
 function setGroupProfile(group,profileId){ if(unlocked&&profileId) send('group_profile',{group,profileId}); }
-function addTicketTime(ip){ if(unlocked) send('add_ticket_time',{ip}); }
+function addTicketTime(ip,label='Gerät',shared=false){ if(!unlocked)return; const text=shared?`Wirklich +45 Minuten für das gemeinsame Budget von ${label} vergeben? Auf deiner FRITZ!Box kann das mehrere Geräte betreffen. Eine direkte -45-Minuten-Funktion gibt es nicht.`:`Wirklich +45 Minuten Zusatzzeit für ${label} vergeben? Eine direkte -45-Minuten-Funktion gibt es nicht.`; if(window.confirm(text)) send('add_ticket_time',{ip}); }
 function markTicket(){ if(unlocked) send('mark_ticket'); }
 function esc(v){ return String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c])); }
 function fmt(sec){
@@ -530,9 +536,17 @@ function groupSummary(group,devs){
     const timed=valid.filter(d=>Number(d.timeMax)>0);
     if(timed.length===1){ rest=Math.max(0,Number(timed[0].timeMax)-Number(timed[0].timeUsed)); profile=timed[0].profile||''; }
   }
-  const ticketCount=valid.reduce((n,d)=>n+(Number(d.ticketsInAdvance)||0),0);
-  const ticketMinutes=valid.reduce((n,d)=>n+(Number(d.ticketValid)||0),0);
-  return {group,devs,online,total:devs.length,rest,profile,ticketCount,ticketMinutes};
+  const activeExtraMax=valid.reduce((n,d)=>Math.max(n,Number(d.ticketValid)||0),0);
+  const queuedExtra=valid.reduce((n,d)=>n+(Number(d.ticketsInAdvance)||0),0);
+  return {group,devs,online,total:devs.length,rest,profile,activeExtraMax,queuedExtra};
+}
+
+function sharedBudgetTicketTarget(devs){
+  const timed=(devs||[]).filter(d=>!d.error && Number(d.timeMax)>0);
+  if(!timed.length || !timed.every(d=>Boolean(d.isTimeShared))) return null;
+  const profiles=[...new Set(timed.map(d=>String(d.profileId||d.profile||'')))];
+  if(profiles.length!==1) return null;
+  return timed.find(d=>d.disallow!==true) || timed[0] || null;
 }
 function buildSummaries(data){
   const by={};
@@ -559,7 +573,8 @@ function renderCompact(data,summaries){
     const meta=document.createElement('div'); meta.className='summaryMeta';
     meta.textContent=s.profile?`Profil: ${s.profile}`:'Profile siehe Großansicht'; c.appendChild(meta);
     const tl=document.createElement('div'); tl.className='compactTicketLine';
-    tl.textContent=`Zusatz-Tickets: ${s.ticketCount}${s.ticketMinutes?` · ${s.ticketMinutes} min aktiv`:''}`; c.appendChild(tl);
+    const freeCodes=(data.issuedTickets||[]).filter(t=>t.status==='marked').length;
+    tl.textContent=`Zusatzzeit: ${s.activeExtraMax?`bis ${s.activeExtraMax} min aktiv`:'keine'} · Ticketcodes: ${freeCodes}`; c.appendChild(tl);
     const a=document.createElement('div'); a.className='summaryActions';
     const b1=document.createElement('button'); b1.className='danger'; b1.textContent='Alle sperren'; b1.disabled=data.readOnly; b1.addEventListener('click',()=>groupAct(s.group,true));
     const b2=document.createElement('button'); b2.className='ok'; b2.textContent='Freigeben'; b2.disabled=data.readOnly; b2.addEventListener('click',()=>groupAct(s.group,false));
@@ -571,13 +586,13 @@ function renderOverview(summaries){
   const root=document.getElementById('overview'); root.innerHTML='';
   summaries.forEach(s=>{
     const c=document.createElement('div'); c.className='card overviewCard';
-    c.innerHTML=`<strong>${esc(s.group)}</strong><div class="overviewRest">${s.rest===null?'—':esc(fmt(s.rest))}</div><div class="overviewSmall">${esc(s.profile||'mehrere/kein Profil')}</div><div class="overviewSmall">${s.ticketCount} Zusatz-Ticket${s.ticketCount===1?'':'s'}</div>`;
+    c.innerHTML=`<strong>${esc(s.group)}</strong><div class="overviewRest">${s.rest===null?'—':esc(fmt(s.rest))}</div><div class="overviewSmall">${esc(s.profile||'mehrere/kein Profil')}</div><div class="overviewSmall">${s.activeExtraMax?`Zusatzzeit bis ${s.activeExtraMax} min aktiv`:'keine aktive Zusatzzeit'}</div>`;
     root.appendChild(c);
   });
 }
 function renderTicketPanel(data){
   const p=document.getElementById('ticketPanel'); p.innerHTML='';
-  const title=document.createElement('strong'); title.textContent='Ticketcodes'; p.appendChild(title);
+  const title=document.createElement('strong'); title.textContent='Freie Ticketcodes (global, über Symcon)'; p.appendChild(title);
   const codes=(data.issuedTickets||[]);
   if(codes.length){
     codes.forEach(t=>{
@@ -587,8 +602,8 @@ function renderTicketPanel(data){
   }else{
     const note=document.createElement('span'); note.className='note'; note.textContent='Noch kein Ticketcode über Symcon erzeugt.'; p.appendChild(note);
   }
-  const b=document.createElement('button'); b.className='ticket'; b.textContent='Ticketcode holen'; b.disabled=data.readOnly; b.title='Markiert einen freien 6-stelligen FRITZ!-Ticketcode'; b.addEventListener('click',markTicket); p.appendChild(b);
-  const note=document.createElement('span'); note.className='note'; note.textContent='Gezeigt werden nur Codes, die hier über Symcon erzeugt wurden.'; p.appendChild(note);
+  const b=document.createElement('button'); b.className='ticket'; b.textContent='Neuen 45-min-Ticketcode holen'; b.disabled=data.readOnly; b.title='Markiert einen freien 6-stelligen FRITZ!-Ticketcode'; b.addEventListener('click',markTicket); p.appendChild(b);
+  const note=document.createElement('span'); note.className='note'; note.textContent='Codes sind global und werden erst beim Einlösen an fritz.box einem Gerät zugeordnet. Gezeigt werden nur Codes, die Symcon erzeugt hat.'; p.appendChild(note);
 }
 function renderFull(data,summaries){
   renderOverview(summaries); renderTicketPanel(data);
@@ -602,6 +617,8 @@ function renderFull(data,summaries){
     const name=document.createElement('strong'); name.textContent=g; h.appendChild(name);
     const budget=document.createElement('span'); budget.className='groupBudget'; budget.textContent=sum.rest===null?'Budget: —':`Rest ${fmt(sum.rest)}`; h.appendChild(budget);
     if(profiles.length){ const gps=makeProfileSelect(profiles,'',v=>setGroupProfile(g,v),'Profil für alle …',data.readOnly,'groupProfile'); h.appendChild(gps); }
+    const sharedTarget=sharedBudgetTicketTarget(devs);
+    if(sharedTarget){ const gb=document.createElement('button'); gb.className='ticket'; gb.textContent='Gemeinsames Budget +45'; gb.disabled=data.readOnly||sharedTarget.disallow===true; gb.title='Gemeinsames Budget: auf deiner FRITZ!Box wird die Zusatzzeit profilweit gespiegelt'; gb.addEventListener('click',()=>addTicketTime(sharedTarget.ip,g,true)); h.appendChild(gb); }
     const b1=document.createElement('button'); b1.className='danger'; b1.textContent='Alle sperren'; b1.disabled=data.readOnly; b1.addEventListener('click',()=>groupAct(g,true));
     const b2=document.createElement('button'); b2.className='ok'; b2.textContent='Alle freigeben'; b2.disabled=data.readOnly; b2.addEventListener('click',()=>groupAct(g,false));
     h.appendChild(b1); h.appendChild(b2); c.appendChild(h);
@@ -621,13 +638,13 @@ function renderFull(data,summaries){
       const state=document.createElement('div'); state.className='state'; state.innerHTML=`<span class="dot ${st.cls}"></span>${esc(st.text)}`; row.appendChild(state);
       const ts=document.createElement('div'); ts.className='ticketState';
       const n=Number(d.ticketsInAdvance)||0, valid=Number(d.ticketValid)||0;
-      ts.innerHTML=`<div>Zusatz-Tickets: <strong>${n}</strong></div><div class="sub">${valid?`${valid} min Ticketzeit aktiv`:(Number(d.timeMax)>0?'bereit für +45 min':'kein Zeitplan/Budget')}</div>`; row.appendChild(ts);
+      ts.innerHTML=`<div>Zusatzzeit: <strong>${valid?valid+' min aktiv':'keine'}</strong></div><div class="sub">${n>0?`${n} weiterer 45-min-Block vorgemerkt`:(Number(d.timeMax)>0?(d.isTimeShared?'gemeinsames Budget':'direkt pro Gerät'):'kein Zeitplan/Budget')}</div>`; row.appendChild(ts);
 
       const a=document.createElement('div'); a.className='actions';
-      const add=document.createElement('button'); add.className='ticket'; add.textContent='+45 min'; add.disabled=data.readOnly||Number(d.timeMax)<=0||d.disallow===true; add.title=d.disallow===true?'Gerät ist manuell gesperrt':(Number(d.timeMax)<=0?'Profil hat kein Zeitbudget/keinen Zeitplan':'45 Minuten Zusatzzeit'); add.addEventListener('click',()=>addTicketTime(d.ip));
+      if(!sharedTarget){ const add=document.createElement('button'); add.className='ticket'; add.textContent='+45 min'; add.disabled=data.readOnly||Number(d.timeMax)<=0||d.disallow===true; add.title=d.disallow===true?'Gerät ist manuell gesperrt':(Number(d.timeMax)<=0?'Profil hat kein Zeitbudget/keinen Zeitplan':'45 Minuten Zusatzzeit nur für dieses Gerät'); add.addEventListener('click',()=>addTicketTime(d.ip,d.name||'Gerät',false)); a.appendChild(add); }
       const s=document.createElement('button'); s.className='danger'; s.textContent='Sperren'; s.disabled=data.readOnly; s.addEventListener('click',()=>act(d.ip,true));
       const f=document.createElement('button'); f.className='ok'; f.textContent='Freigeben'; f.disabled=data.readOnly; f.addEventListener('click',()=>act(d.ip,false));
-      a.appendChild(add); a.appendChild(s); a.appendChild(f); row.appendChild(a); c.appendChild(row);
+      a.appendChild(s); a.appendChild(f); row.appendChild(a); c.appendChild(row);
     });
     root.appendChild(c);
   });
@@ -636,6 +653,9 @@ function renderFull(data,summaries){
 function render(data){
   if(!unlocked) return;
   lastData=data;
+  if(typeof data.enableParentPopup==='boolean') popupEnabled=data.enableParentPopup;
+  if(typeof data.autoOpenParentPopup==='boolean') popupAutoOpen=data.autoOpenParentPopup;
+  document.getElementById('popupBtn').style.display=popupEnabled?'inline-block':'none';
   const mode=document.getElementById('mode'); mode.textContent=data.readOnly?'TEST · nur lesen':'STEUERUNG AKTIV'; mode.className='badge'+(data.readOnly?' warn':'');
   document.getElementById('msg').textContent=data.message||'';
   const summaries=buildSummaries(data);
@@ -648,7 +668,7 @@ function handleMessage(data){
   if(data.kind==='auth'){
     if(data.ok){
       setUnlocked(data);
-      if(data.payload){ render(data.payload); if(data.payload.autoOpenParentPopup!==false) renderParentPopup(data.payload); }
+      if(data.payload){ render(data.payload); if(popupEnabled && popupAutoOpen && data.payload.enableParentPopup!==false && data.payload.autoOpenParentPopup!==false) renderParentPopup(data.payload); }
     }else{
       closeParentPopup();
       setLocked(data.message||'PIN falsch.');
@@ -672,6 +692,7 @@ document.getElementById('popupBtn').addEventListener('click',openParentPopupNow)
 document.getElementById('lockBtn').addEventListener('click',lockNow);
 window.addEventListener('resize',updateLayout);
 if(window.ResizeObserver){ new ResizeObserver(updateLayout).observe(document.getElementById('app')); }
+document.getElementById('popupBtn').style.display=popupEnabled?'inline-block':'none';
 updateLayout();
 setTimeout(()=>send('hello'),100);
 </script>

@@ -117,11 +117,19 @@ class OnlinezeitKinder extends IPSModuleStrict
             }));
         }
 
+        $globalTicketCodes = 0;
+        foreach ((array) ($data['issuedTickets'] ?? []) as $ticket) {
+            if (is_array($ticket) && (string) ($ticket['status'] ?? '') === 'marked') {
+                $globalTicketCodes++;
+            }
+        }
+
         return [
             'rotateSeconds' => max(2, min(60, $this->ReadPropertyInteger('RotateSeconds'))),
             'showTickets' => $this->ReadPropertyBoolean('ShowTickets'),
             'showOnlineCount' => $this->ReadPropertyBoolean('ShowOnlineCount'),
             'groups' => $summaries,
+            'globalTicketCodes' => $globalTicketCodes,
             'updated' => date('H:i:s'),
             'message' => (string) ($data['message'] ?? '')
         ];
@@ -198,19 +206,19 @@ class OnlinezeitKinder extends IPSModuleStrict
                 }
             }
 
-            $tickets = 0;
-            $ticketMinutes = 0;
+            $queuedExtra = 0;
+            $activeExtraMax = 0;
             foreach ($valid as $d) {
-                $tickets += (int) ($d['ticketsInAdvance'] ?? 0);
-                $ticketMinutes += (int) ($d['ticketValid'] ?? 0);
+                $queuedExtra += (int) ($d['ticketsInAdvance'] ?? 0);
+                $activeExtraMax = max($activeExtraMax, (int) ($d['ticketValid'] ?? 0));
             }
 
             $rows[] = [
                 'group' => (string) $group,
                 'rest' => $rest,
                 'profile' => $profile,
-                'tickets' => $tickets,
-                'ticketMinutes' => $ticketMinutes,
+                'queuedExtra' => $queuedExtra,
+                'activeExtraMax' => $activeExtraMax,
                 'online' => $online,
                 'total' => count($devs)
             ];

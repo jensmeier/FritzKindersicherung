@@ -1,4 +1,4 @@
-FRITZ!Box Kindersicherung – BUILD15
+FRITZ!Box Kindersicherung – BUILD17
 
 Basis: BUILD9 (stabile Hauptkachel + Onlinezeit Kinder).
 
@@ -52,3 +52,11 @@ BUILD15:
 
 
 BUILD16: Elternansicht als echtes Browser-Popup direkt aus der 2x2-PIN-Kachel. Keine zweite Visualisierung. Popup wird beim OK-Tipp vor der PIN-Prüfung geöffnet (Popup-Blocker-sicherer), bei falscher PIN sofort geschlossen. Aktionen laufen weiterhin über den sicheren HTML-SDK-Kanal des Ursprungsfensters. Windows: eigenes Fenster; Android/Fully Kiosk: Popup/neues Fenster, sofern Popups erlaubt sind.
+
+BUILD17
+- Popup-Elternansicht komplett ein-/ausschaltbar; Auto-Öffnen separat.
+- FRITZ!-Ticketbegriffe getrennt: globale Ticketcodes vs. gerätebezogene Zusatzzeit.
+- Bei gemeinsamem Budget gibt es nur noch einen Gruppenknopf „Gemeinsames Budget +45“; per Vorher/Nachher wird geprüft, welche Geräte die FRITZ!Box tatsächlich ändert.
+- +45 Minuten verlangt eine Bestätigung, da es keine direkte -45-Minuten-Gegenfunktion gibt.
+- TimeMax/TimeUsed werden korrekt als Sekunden, TicketValid als Minuten behandelt.
+- Status/Verbindung/FRITZ!-Profil der Geräte bleiben in der Konfiguration gespeichert.

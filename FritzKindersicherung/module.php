@@ -26,7 +26,8 @@ class FritzKindersicherung extends IPSModuleStrict
         $this->RegisterPropertyString('Devices', '[]');
         // BUILD12: Optionale eigene Kachel-Visualisierung als große Elternansicht.
         $this->RegisterPropertyInteger('ParentVisualizationID', 0);
-        $this->RegisterPropertyBoolean('AutoOpenParentVisualization', false); // Alt/Kompatibilität, BUILD16 nutzt Popup.
+        $this->RegisterPropertyBoolean('AutoOpenParentVisualization', false); // Alt/Kompatibilität.
+        $this->RegisterPropertyBoolean('EnableParentPopup', true);
         $this->RegisterPropertyBoolean('AutoOpenParentPopup', true);
 
         // BUILD9: Status für Zusatzanzeigen wird ausschließlich im Modul-Buffer gehalten.
@@ -62,7 +63,17 @@ class FritzKindersicherung extends IPSModuleStrict
 
     public function GetVisualizationTile(): string
     {
-        return (string) file_get_contents(__DIR__ . '/module.html');
+        $html = (string) file_get_contents(__DIR__ . '/module.html');
+        // BUILD17: Popup-Schalter schon vor der PIN-Prüfung in das HTML einbetten.
+        // Das ist wichtig, weil Browser/Fully Kiosk window.open() nur direkt aus dem OK-Tipp erlauben.
+        return str_replace(
+            ['__FKS_POPUP_ENABLED__', '__FKS_POPUP_AUTO__'],
+            [
+                $this->ReadPropertyBoolean('EnableParentPopup') ? 'true' : 'false',
+                $this->ReadPropertyBoolean('AutoOpenParentPopup') ? 'true' : 'false'
+            ],
+            $html
+        );
     }
 
     /**
@@ -599,22 +610,75 @@ class FritzKindersicherung extends IPSModuleStrict
 
         try {
             $service = $this->DiscoverHostFilterService(false);
+            // BUILD17: Vorher/Nachher prüfen. Auf Profilen mit gemeinsamem Budget kann die
+            // FRITZ!Box die Zusatzzeit auf mehrere Geräte spiegeln. So melden wir das ehrlich,
+            // statt nur den angeklickten Gerätenamen zu behaupten.
+            $before = $this->ReadConfiguredTicketStates($service);
             $result = $this->SoapAction($service, 'AddTicketTimeToHostEntryByIP', [
                 'NewIPv4Address' => $ip
             ]);
-            $ticketValid = (int) ($result['NewTicketValid'] ?? 0);
+            usleep(250000);
+            $after = $this->ReadConfiguredTicketStates($service);
+
+            $ticketValid = (int) ($result['NewTicketValid'] ?? 0); // Minuten laut FRITZ!-TR-064
             $tickets = (int) ($result['NewTicketsInAdvance'] ?? 0);
-            $msg = '+45 Minuten vergeben.';
-            if ($ticketValid > 0 || $tickets > 0) {
-                $msg .= ' Zusatz-Tickets: ' . $tickets;
-                if ($ticketValid > 0) {
-                    $msg .= ' · aktuelle Ticketzeit ' . $ticketValid . ' min';
+            $targetName = $before[$ip]['name'] ?? $ip;
+            $changed = [];
+            foreach ($after as $stateIp => $state) {
+                $old = $before[$stateIp] ?? null;
+                if ($old === null) {
+                    continue;
                 }
+                if ((int) ($state['ticketValid'] ?? 0) !== (int) ($old['ticketValid'] ?? 0)
+                    || (int) ($state['ticketsInAdvance'] ?? 0) !== (int) ($old['ticketsInAdvance'] ?? 0)) {
+                    $changed[] = (string) ($state['name'] ?? $stateIp);
+                }
+            }
+
+            if (count($changed) > 1) {
+                $msg = '+45 Minuten angefordert für „' . $targetName . '“. Die FRITZ!Box hat die Zusatzzeit bei '
+                    . count($changed) . ' Geräten gespiegelt (gemeinsames Budget): ' . implode(', ', $changed) . '.';
+            } else {
+                $msg = '+45 Minuten für „' . $targetName . '“ vergeben.';
+            }
+            if ($ticketValid > 0 || $tickets > 0) {
+                $msg .= ' Aktive Zusatzzeit: ' . $ticketValid . ' min';
+                if ($tickets > 0) {
+                    $msg .= ' · vorgemerkt: ' . $tickets;
+                }
+                $msg .= '.';
             }
             $this->SendStatusToClient($clientId, $msg);
         } catch (Throwable $e) {
             $this->SendStatusToClient($clientId, 'FRITZ!Box Fehler bei +45 Minuten: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Liest nur die Ticket-/Zusatzzeitwerte der konfigurierten Geräte für einen kurzen
+     * Vorher/Nachher-Vergleich. TimeMax/TimeUsed sind Sekunden, TicketValid ist Minuten.
+     */
+    private function ReadConfiguredTicketStates(array $service): array
+    {
+        $states = [];
+        foreach ($this->GetResolvedConfiguredDevices() as $device) {
+            $stateIp = trim((string) ($device['ip'] ?? ''));
+            if ($stateIp === '') {
+                continue;
+            }
+            try {
+                $entry = $this->SoapAction($service, 'GetHostEntryByIP', ['NewIPv4Address' => $stateIp]);
+                $states[$stateIp] = [
+                    'name' => (string) ($device['name'] ?? $stateIp),
+                    'profileId' => (string) ($entry['NewFilterProfileID'] ?? ''),
+                    'isTimeShared' => $this->ToBool($entry['NewIsTimeShared'] ?? false),
+                    'ticketsInAdvance' => (int) ($entry['NewTicketsInAdvance'] ?? 0),
+                    'ticketValid' => (int) ($entry['NewTicketValid'] ?? 0)
+                ];
+            } catch (Throwable $ignored) {
+            }
+        }
+        return $states;
     }
 
     private function HandleMarkTicket(string $clientId): void
@@ -953,6 +1017,7 @@ class FritzKindersicherung extends IPSModuleStrict
             'issuedTickets' => $this->GetIssuedTicketStatus(),
             'parentVisualizationId' => 0,
             'autoOpenParentVisualization' => false,
+            'enableParentPopup' => $this->ReadPropertyBoolean('EnableParentPopup'),
             'autoOpenParentPopup' => $this->ReadPropertyBoolean('AutoOpenParentPopup'),
             'message' => $message
         ];
