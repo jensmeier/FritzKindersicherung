@@ -6,208 +6,365 @@
 <style>
 :root { color-scheme: light dark; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
 * { box-sizing: border-box; }
-html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: transparent; }
-#app { height: 100%; padding: 10px; display: flex; flex-direction: column; gap: 8px; }
-.card { background: rgba(127,127,127,.10); border: 1px solid rgba(127,127,127,.22); border-radius: 14px; padding: 10px; }
-.center { display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; gap:10px; }
-.lock { font-size: 42px; line-height:1; }
-.title { font-size: 18px; font-weight: 750; }
-.sub { font-size: 12px; opacity:.72; text-align:center; }
-.dots { height:24px; font-size:24px; letter-spacing:7px; }
-.keypad { display:grid; grid-template-columns:repeat(3,64px); gap:8px; }
-button { border:0; border-radius:10px; padding:10px 12px; font-size:14px; cursor:pointer; background:rgba(127,127,127,.18); color:inherit; }
-.keypad button { width:64px; height:46px; font-size:18px; }
+html, body { margin:0; width:100%; height:100%; overflow:hidden; background:transparent; }
+button, select { font:inherit; }
+button { border:0; border-radius:10px; min-height:40px; padding:8px 11px; cursor:pointer; background:rgba(127,127,127,.18); color:inherit; }
 button.primary { background:#1473e6; color:white; }
 button.danger { background:#c73535; color:white; }
 button.ok { background:#238b57; color:white; }
-button:disabled { opacity:.4; cursor:not-allowed; }
-.top { display:flex; align-items:center; gap:8px; }
-.top .grow { flex:1; }
-.badge { font-size:11px; padding:4px 7px; border-radius:999px; background:rgba(127,127,127,.18); }
+button.ticket { background:#6a5acd; color:white; }
+button:disabled { opacity:.40; cursor:not-allowed; }
+#app { width:100%; height:100%; padding:8px; display:flex; flex-direction:column; gap:7px; min-width:0; min-height:0; }
+.card { background:rgba(127,127,127,.10); border:1px solid rgba(127,127,127,.22); border-radius:13px; padding:9px; min-width:0; }
+.sub { font-size:12px; opacity:.72; }
+.badge { font-size:11px; padding:4px 7px; border-radius:999px; background:rgba(127,127,127,.18); white-space:nowrap; }
 .badge.warn { background:#b66c00; color:white; }
-.groups { min-height:0; overflow:auto; display:flex; flex-direction:column; gap:8px; }
-.groupHead { display:flex; gap:6px; align-items:center; margin-bottom:7px; }
-.groupHead strong { flex:1; min-width:90px; }
-.profileSelect { max-width:210px; min-width:145px; border:1px solid rgba(127,127,127,.28); border-radius:8px; padding:6px 8px; font-size:12px; background:rgba(127,127,127,.10); color:inherit; }
-.profileSelect:disabled { opacity:.58; }
-.groupProfile { max-width:190px; }
-.metaLine { display:flex; align-items:center; flex-wrap:wrap; gap:5px; margin-top:2px; }
-.ipmeta { font-size:11px; opacity:.72; }
-.timeinfo { font-size:11px; opacity:.72; white-space:nowrap; }
-.device { display:grid; grid-template-columns:minmax(120px,1.4fr) minmax(105px,.9fr) auto; align-items:center; gap:8px; padding:7px 0; border-top:1px solid rgba(127,127,127,.15); }
-.device:first-of-type { border-top:0; }
-.devname { font-weight:650; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.meta { font-size:11px; opacity:.72; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.state { font-size:12px; }
 .dot { display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:5px; background:#8b8b8b; }
-.dot.on { background:#2aa666; } .dot.off { background:#d64b4b; } .dot.err { background:#d89422; }
-.actions { display:flex; gap:5px; }
-.actions button { padding:7px 9px; font-size:12px; }
-#msg { min-height:18px; font-size:12px; opacity:.85; text-align:center; }
-@media (max-width:650px) {
-  #app { padding:7px; }
-  .device { grid-template-columns:1fr auto; }
-  .device .state { grid-column:1/2; }
-  .actions { grid-column:2/3; grid-row:1/3; flex-direction:column; }
-  .groupHead button { padding:7px; font-size:11px; }
+.dot.on { background:#2aa666; }
+.dot.off { background:#d64b4b; }
+.dot.err { background:#d89422; }
+
+/* PIN-Ansicht: explizit für kleine 2x2-Kacheln optimiert. */
+#locked { flex:1; min-height:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:clamp(3px,1.2vh,8px); overflow:hidden; }
+.lockIcon { font-size:clamp(23px,8vh,38px); line-height:1; }
+.lockTitle { font-size:clamp(15px,4.8vh,19px); font-weight:750; }
+.lockSub { font-size:clamp(10px,3vh,12px); opacity:.70; text-align:center; }
+.dots { min-height:18px; font-size:clamp(17px,5vh,23px); line-height:1; letter-spacing:6px; }
+.keypad { width:min(100%,214px); display:grid; grid-template-columns:repeat(3,minmax(44px,1fr)); gap:clamp(4px,1.6vh,7px); }
+.keypad button { min-width:0; width:100%; height:clamp(39px,11vh,47px); min-height:39px; padding:0; font-size:clamp(16px,5vh,19px); }
+#lockmsg { min-height:14px; font-size:10px; text-align:center; opacity:.78; }
+@media (max-height:285px) {
+  #app { padding:5px; }
+  #locked { gap:3px; }
+  .lockIcon, .lockSub { display:none; }
+  .keypad { gap:4px; width:min(100%,190px); }
+  .keypad button { height:36px; min-height:36px; }
+}
+@media (max-width:250px) {
+  .lockIcon, .lockSub { display:none; }
+  .keypad { width:100%; }
+}
+
+/* Freigeschaltete Ansicht */
+#unlocked { display:none; flex:1; min-width:0; min-height:0; flex-direction:column; gap:7px; }
+.top { display:flex; align-items:center; gap:6px; min-height:40px; }
+.top .grow { flex:1; min-width:0; }
+.top button { min-width:40px; padding:7px 9px; }
+#msg { min-height:15px; max-height:32px; overflow:hidden; font-size:11px; opacity:.82; text-align:center; }
+.hint { display:none; font-size:10px; text-align:center; opacity:.65; }
+
+/* Kompaktansicht wird bei kleiner Kachel automatisch genutzt. */
+#compactView { display:none; flex:1; min-height:0; overflow:auto; }
+.compactGrid { display:grid; grid-template-columns:repeat(auto-fit,minmax(145px,1fr)); gap:7px; }
+.summaryCard { min-height:116px; display:flex; flex-direction:column; gap:5px; }
+.summaryTop { display:flex; align-items:center; gap:6px; }
+.summaryName { font-size:15px; font-weight:800; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.summaryStatus { margin-left:auto; font-size:10px; opacity:.75; white-space:nowrap; }
+.summaryRest { font-size:clamp(22px,8vw,32px); font-weight:800; line-height:1.05; }
+.summaryLabel { font-size:10px; opacity:.67; }
+.summaryMeta { font-size:10px; opacity:.76; line-height:1.3; white-space:normal; }
+.summaryActions { display:grid; grid-template-columns:1fr 1fr; gap:5px; margin-top:auto; }
+.summaryActions button { min-height:35px; padding:5px; font-size:10px; }
+.compactTicketLine { font-size:10px; opacity:.76; }
+
+/* Großansicht innerhalb großer Kachel / maximierter Ansicht. */
+#fullView { display:flex; flex:1; min-height:0; flex-direction:column; gap:7px; }
+.overview { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:7px; flex:0 0 auto; }
+.overviewCard { padding:8px 10px; display:grid; grid-template-columns:1fr auto; gap:3px 10px; align-items:center; }
+.overviewCard strong { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.overviewRest { font-size:18px; font-weight:800; }
+.overviewSmall { font-size:10px; opacity:.72; }
+.ticketPanel { display:flex; align-items:center; flex-wrap:wrap; gap:6px; padding:7px 9px; }
+.ticketPanel strong { margin-right:3px; }
+.ticketCode { font-variant-numeric:tabular-nums; letter-spacing:1px; padding:4px 7px; border-radius:7px; background:rgba(127,127,127,.15); font-size:12px; }
+.ticketCode.used { opacity:.45; text-decoration:line-through; }
+.ticketPanel .note { font-size:10px; opacity:.67; }
+.groups { flex:1; min-height:0; overflow:auto; display:flex; flex-direction:column; gap:7px; }
+.groupHead { display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin-bottom:6px; }
+.groupHead strong { flex:1 1 100px; min-width:80px; }
+.groupBudget { font-size:11px; padding:4px 7px; border-radius:8px; background:rgba(127,127,127,.12); white-space:nowrap; }
+.profileSelect { max-width:210px; min-width:140px; border:1px solid rgba(127,127,127,.28); border-radius:8px; padding:6px 8px; font-size:12px; background:rgba(127,127,127,.10); color:inherit; }
+.profileSelect:disabled { opacity:.58; }
+.groupProfile { max-width:185px; }
+.device { display:grid; grid-template-columns:minmax(155px,1.5fr) minmax(115px,.8fr) minmax(90px,.7fr) auto; align-items:center; gap:8px; padding:7px 0; border-top:1px solid rgba(127,127,127,.15); }
+.devname { font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.metaLine { display:flex; align-items:center; flex-wrap:wrap; gap:5px; margin-top:2px; }
+.ipmeta, .timeinfo, .ticketinfo { font-size:10px; opacity:.72; white-space:nowrap; }
+.state { font-size:11px; }
+.ticketState { font-size:10px; line-height:1.3; }
+.actions { display:grid; grid-template-columns:repeat(3,auto); gap:5px; }
+.actions button { min-height:36px; padding:6px 8px; font-size:11px; }
+
+@media (max-width:780px) {
+  .device { grid-template-columns:minmax(135px,1fr) minmax(105px,.7fr) auto; }
+  .ticketState { grid-column:1/3; }
+  .actions { grid-column:3; grid-row:1/3; grid-template-columns:1fr; }
+}
+body.compact #compactView { display:block; }
+body.compact #fullView { display:none; }
+body.compact .hint { display:block; }
+body.compact #msg { display:none; }
+body.compact .top { min-height:34px; }
+body.compact .top button { min-height:34px; min-width:34px; padding:4px 7px; }
+body.compact .badge { font-size:9px; padding:3px 5px; }
+@media (max-height:330px) {
+  body.compact .hint { display:none; }
+  .summaryCard { min-height:102px; }
 }
 </style>
 </head>
 <body>
 <div id="app">
-  <div id="locked" class="center">
-    <div class="lock">🔒</div>
-    <div class="title">PIN eingeben</div>
-    <div class="sub">Die FRITZ!Box-Steuerung ist geschützt.</div>
+  <div id="locked">
+    <div class="lockIcon">🔒</div>
+    <div class="lockTitle">PIN eingeben</div>
+    <div class="lockSub">FRITZ!Box-Steuerung geschützt</div>
     <div id="dots" class="dots">••••</div>
     <div class="keypad">
-      <button onclick="digit('1')">1</button><button onclick="digit('2')">2</button><button onclick="digit('3')">3</button>
-      <button onclick="digit('4')">4</button><button onclick="digit('5')">5</button><button onclick="digit('6')">6</button>
-      <button onclick="digit('7')">7</button><button onclick="digit('8')">8</button><button onclick="digit('9')">9</button>
-      <button onclick="clearPin()">⌫</button><button onclick="digit('0')">0</button><button class="primary" onclick="submitPin()">OK</button>
+      <button type="button" data-digit="1">1</button><button type="button" data-digit="2">2</button><button type="button" data-digit="3">3</button>
+      <button type="button" data-digit="4">4</button><button type="button" data-digit="5">5</button><button type="button" data-digit="6">6</button>
+      <button type="button" data-digit="7">7</button><button type="button" data-digit="8">8</button><button type="button" data-digit="9">9</button>
+      <button type="button" id="backspace">⌫</button><button type="button" data-digit="0">0</button><button type="button" id="pinOk" class="primary">OK</button>
     </div>
-    <div id="lockmsg" class="sub"></div>
+    <div id="lockmsg"></div>
   </div>
-  <div id="unlocked" style="display:none;height:100%;min-height:0;flex-direction:column;gap:8px">
+
+  <div id="unlocked">
     <div class="top">
       <div class="grow"></div>
       <span id="mode" class="badge"></span>
-      <button onclick="refresh()">↻</button>
-      <button onclick="lockNow()">🔒</button>
+      <button type="button" id="refreshBtn" title="Aktualisieren">↻</button>
+      <button type="button" id="lockBtn" title="Sperren">🔒</button>
     </div>
     <div id="msg"></div>
-    <div id="groups" class="groups"></div>
+    <div class="hint">Für alle Geräte und Einstellungen oben rechts die Symcon-Kachel ↗ vergrößern.</div>
+
+    <div id="compactView">
+      <div id="compactGroups" class="compactGrid"></div>
+    </div>
+
+    <div id="fullView">
+      <div id="overview" class="overview"></div>
+      <div id="ticketPanel" class="card ticketPanel"></div>
+      <div id="groups" class="groups"></div>
+    </div>
   </div>
 </div>
 <script>
-let pin = '';
-let unlocked = false;
-let expiresAt = 0;
-const clientId = getClientId();
-let lockTimer = null;
+let pin='';
+let unlocked=false;
+let expiresAt=0;
+let lockTimer=null;
+let lastData=null;
+const clientId=getClientId();
 
-function getClientId() {
-  let id = sessionStorage.getItem('fksClientId');
-  if (!id) {
-    if (window.crypto && crypto.randomUUID) id = crypto.randomUUID();
-    else id = Date.now().toString(36) + Math.random().toString(36).slice(2);
-    sessionStorage.setItem('fksClientId', id);
+function getClientId(){
+  let id=sessionStorage.getItem('fksClientId');
+  if(!id){
+    if(window.crypto&&crypto.randomUUID) id=crypto.randomUUID();
+    else id=Date.now().toString(36)+Math.random().toString(36).slice(2);
+    sessionStorage.setItem('fksClientId',id);
   }
   return id;
 }
-function send(op, extra={}) {
-  requestAction('command', JSON.stringify(Object.assign({op, clientId}, extra)));
-}
-function digit(d) { if (pin.length < 8) pin += d; paintDots(); }
-function clearPin() { pin = pin.slice(0,-1); paintDots(); }
-function paintDots() { document.getElementById('dots').textContent = pin.length ? '•'.repeat(pin.length) : '••••'; }
-function submitPin() {
-  if (pin.length < 4) { document.getElementById('lockmsg').textContent='Mindestens 4 Ziffern.'; return; }
+function send(op,extra={}){ requestAction('command',JSON.stringify(Object.assign({op,clientId},extra))); }
+function digit(d){ if(pin.length<8) pin+=d; paintDots(); }
+function clearPin(){ pin=pin.slice(0,-1); paintDots(); }
+function paintDots(){ document.getElementById('dots').textContent=pin.length?'•'.repeat(pin.length):'••••'; }
+function submitPin(){
+  if(pin.length<4){ document.getElementById('lockmsg').textContent='Mindestens 4 Ziffern.'; return; }
   send('unlock',{pin}); pin=''; paintDots();
 }
-function setLocked(message='') {
-  unlocked=false; expiresAt=0;
+function setLocked(message=''){
+  unlocked=false; expiresAt=0; lastData=null;
   document.getElementById('locked').style.display='flex';
   document.getElementById('unlocked').style.display='none';
   document.getElementById('lockmsg').textContent=message;
-  if (lockTimer) clearInterval(lockTimer);
+  if(lockTimer) clearInterval(lockTimer);
 }
-function setUnlocked(data) {
-  unlocked=true;
-  expiresAt=(data.expires || 0)*1000;
+function setUnlocked(data){
+  unlocked=true; expiresAt=(data.expires||0)*1000;
   document.getElementById('locked').style.display='none';
   document.getElementById('unlocked').style.display='flex';
-  if (lockTimer) clearInterval(lockTimer);
-  lockTimer=setInterval(()=>{ if (expiresAt && Date.now()>expiresAt) setLocked('Automatisch gesperrt.'); },1000);
+  if(lockTimer) clearInterval(lockTimer);
+  lockTimer=setInterval(()=>{ if(expiresAt&&Date.now()>expiresAt) setLocked('Automatisch gesperrt.'); },1000);
+  updateLayout();
 }
-function lockNow() { send('lock'); setLocked('Gesperrt.'); }
-function refresh() { if (unlocked) send('refresh'); }
-function act(ip, disallow) { if (unlocked) send('set_disallow',{ip,disallow}); }
-function groupAct(group, disallow) { if (unlocked) send('group_disallow',{group,disallow}); }
-function setProfile(ip, profileId) { if (unlocked && profileId) send('set_profile',{ip,profileId}); }
-function setGroupProfile(group, profileId) { if (unlocked && profileId) send('group_profile',{group,profileId}); }
-function makeProfileSelect(profiles, currentId, onChange, placeholder, disabled=false, extraClass='') {
+function updateLayout(){
+  const compact=window.innerWidth<560 || window.innerHeight<470;
+  document.body.classList.toggle('compact',compact);
+  if(lastData&&unlocked) render(lastData);
+}
+function refresh(){ if(unlocked) send('refresh'); }
+function lockNow(){ send('lock'); setLocked('Gesperrt.'); }
+function act(ip,disallow){ if(unlocked) send('set_disallow',{ip,disallow}); }
+function groupAct(group,disallow){ if(unlocked) send('group_disallow',{group,disallow}); }
+function setProfile(ip,profileId){ if(unlocked&&profileId) send('set_profile',{ip,profileId}); }
+function setGroupProfile(group,profileId){ if(unlocked&&profileId) send('group_profile',{group,profileId}); }
+function addTicketTime(ip){ if(unlocked) send('add_ticket_time',{ip}); }
+function markTicket(){ if(unlocked) send('mark_ticket'); }
+function esc(v){ return String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c])); }
+function fmt(sec){
+  sec=Math.max(0,Number(sec)||0);
+  const h=Math.floor(sec/3600),m=Math.floor((sec%3600)/60);
+  return h?`${h} h ${m} min`:`${m} min`;
+}
+function statusFor(d){
+  if(d.error) return {cls:'err',text:'Fehler'};
+  if(d.wan==='granted') return {cls:'on',text:'Internetzugang aktiv'};
+  if(d.wan==='denied') return {cls:'off',text:'Internet gesperrt'};
+  return {cls:'err',text:'Status unbekannt'};
+}
+function makeProfileSelect(profiles,currentId,onChange,placeholder,disabled=false,extraClass=''){
   const sel=document.createElement('select');
-  sel.className='profileSelect'+(extraClass?' '+extraClass:'');
-  sel.disabled=disabled;
+  sel.className='profileSelect'+(extraClass?' '+extraClass:''); sel.disabled=disabled;
   const ph=document.createElement('option'); ph.value=''; ph.textContent=placeholder; sel.appendChild(ph);
-  (profiles||[]).forEach(p=>{
-    const o=document.createElement('option'); o.value=p.id; o.textContent=p.name; if (p.id===currentId) o.selected=true; sel.appendChild(o);
-  });
-  sel.onchange=()=>{ const v=sel.value; if(v) onChange(v); };
+  (profiles||[]).forEach(p=>{ const o=document.createElement('option'); o.value=p.id; o.textContent=p.name; if(p.id===currentId)o.selected=true; sel.appendChild(o); });
+  sel.addEventListener('change',()=>{ const v=sel.value; if(v)onChange(v); });
   return sel;
 }
-function esc(v){ return String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c])); }
-function fmt(sec){ sec=Number(sec)||0; const h=Math.floor(sec/3600), m=Math.floor((sec%3600)/60); return h ? `${h} h ${m} min` : `${m} min`; }
-function render(data){
-  if (!unlocked) return;
-  const mode=document.getElementById('mode');
-  mode.textContent=data.readOnly?'TEST · nur lesen':'STEUERUNG AKTIV';
-  mode.className='badge'+(data.readOnly?' warn':'');
-  document.getElementById('msg').textContent=data.message||'';
-  const profiles=data.profiles||[];
+function groupSummary(group,devs){
+  const valid=devs.filter(d=>!d.error);
+  const online=valid.filter(d=>d.wan==='granted').length;
+  const shared=valid.filter(d=>Boolean(d.isTimeShared)&&Number(d.timeMax)>0);
+  let rest=null,profile='';
+  if(shared.length){
+    const byProfile={};
+    shared.forEach(d=>{ (byProfile[d.profileId||d.profile||'']??=[]).push(d); });
+    const keys=Object.keys(byProfile);
+    if(keys.length===1){
+      const d=byProfile[keys[0]][0];
+      rest=Math.max(0,Number(d.timeMax)-Number(d.timeUsed));
+      profile=d.profile||'';
+    }
+  }
+  if(rest===null){
+    const timed=valid.filter(d=>Number(d.timeMax)>0);
+    if(timed.length===1){ rest=Math.max(0,Number(timed[0].timeMax)-Number(timed[0].timeUsed)); profile=timed[0].profile||''; }
+  }
+  const ticketCount=valid.reduce((n,d)=>n+(Number(d.ticketsInAdvance)||0),0);
+  const ticketMinutes=valid.reduce((n,d)=>n+(Number(d.ticketValid)||0),0);
+  return {group,devs,online,total:devs.length,rest,profile,ticketCount,ticketMinutes};
+}
+function buildSummaries(data){
   const by={};
   (data.devices||[]).forEach(d=>{ const g=d.group||'Geräte'; (by[g]??=[]).push(d); });
+  return Object.entries(by).map(([g,devs])=>groupSummary(g,devs));
+}
+function renderCompact(data,summaries){
+  const root=document.getElementById('compactGroups'); root.innerHTML='';
+  summaries.forEach(s=>{
+    const c=document.createElement('div'); c.className='card summaryCard';
+    const top=document.createElement('div'); top.className='summaryTop';
+    top.innerHTML=`<div class="summaryName">${esc(s.group)}</div><div class="summaryStatus"><span class="dot ${s.online?s.online===s.total?'on':'err':'off'}"></span>${s.online}/${s.total}</div>`;
+    c.appendChild(top);
+    const rest=document.createElement('div'); rest.className='summaryRest'; rest.textContent=s.rest===null?'—':fmt(s.rest); c.appendChild(rest);
+    const lbl=document.createElement('div'); lbl.className='summaryLabel'; lbl.textContent=s.rest===null?'kein gemeinsames Zeitbudget erkannt':'Restzeit heute'; c.appendChild(lbl);
+    const meta=document.createElement('div'); meta.className='summaryMeta';
+    meta.textContent=s.profile?`Profil: ${s.profile}`:'Profile siehe Großansicht'; c.appendChild(meta);
+    const tl=document.createElement('div'); tl.className='compactTicketLine';
+    tl.textContent=`Zusatz-Tickets: ${s.ticketCount}${s.ticketMinutes?` · ${s.ticketMinutes} min aktiv`:''}`; c.appendChild(tl);
+    const a=document.createElement('div'); a.className='summaryActions';
+    const b1=document.createElement('button'); b1.className='danger'; b1.textContent='Alle sperren'; b1.disabled=data.readOnly; b1.addEventListener('click',()=>groupAct(s.group,true));
+    const b2=document.createElement('button'); b2.className='ok'; b2.textContent='Freigeben'; b2.disabled=data.readOnly; b2.addEventListener('click',()=>groupAct(s.group,false));
+    a.appendChild(b1); a.appendChild(b2); c.appendChild(a); root.appendChild(c);
+  });
+  if(!summaries.length) root.innerHTML='<div class="card sub">Noch keine Geräte konfiguriert.</div>';
+}
+function renderOverview(summaries){
+  const root=document.getElementById('overview'); root.innerHTML='';
+  summaries.forEach(s=>{
+    const c=document.createElement('div'); c.className='card overviewCard';
+    c.innerHTML=`<strong>${esc(s.group)}</strong><div class="overviewRest">${s.rest===null?'—':esc(fmt(s.rest))}</div><div class="overviewSmall">${esc(s.profile||'mehrere/kein Profil')}</div><div class="overviewSmall">${s.ticketCount} Zusatz-Ticket${s.ticketCount===1?'':'s'}</div>`;
+    root.appendChild(c);
+  });
+}
+function renderTicketPanel(data){
+  const p=document.getElementById('ticketPanel'); p.innerHTML='';
+  const title=document.createElement('strong'); title.textContent='Ticketcodes'; p.appendChild(title);
+  const codes=(data.issuedTickets||[]);
+  if(codes.length){
+    codes.forEach(t=>{
+      const span=document.createElement('span'); span.className='ticketCode'+(t.status==='marked'?'':' used');
+      span.textContent=t.id+(t.status==='marked'?'':' · benutzt/ungültig'); p.appendChild(span);
+    });
+  }else{
+    const note=document.createElement('span'); note.className='note'; note.textContent='Noch kein Ticketcode über Symcon erzeugt.'; p.appendChild(note);
+  }
+  const b=document.createElement('button'); b.className='ticket'; b.textContent='Ticketcode holen'; b.disabled=data.readOnly; b.title='Markiert einen freien 6-stelligen FRITZ!-Ticketcode'; b.addEventListener('click',markTicket); p.appendChild(b);
+  const note=document.createElement('span'); note.className='note'; note.textContent='Gezeigt werden nur Codes, die hier über Symcon erzeugt wurden.'; p.appendChild(note);
+}
+function renderFull(data,summaries){
+  renderOverview(summaries); renderTicketPanel(data);
+  const profiles=data.profiles||[];
+  const by={}; (data.devices||[]).forEach(d=>{ const g=d.group||'Geräte'; (by[g]??=[]).push(d); });
   const root=document.getElementById('groups'); root.innerHTML='';
   Object.entries(by).forEach(([g,devs])=>{
+    const sum=summaries.find(x=>x.group===g)||groupSummary(g,devs);
     const c=document.createElement('div'); c.className='card';
     const h=document.createElement('div'); h.className='groupHead';
-    const groupName=document.createElement('strong'); groupName.textContent=g; h.appendChild(groupName);
-
-    if (profiles.length) {
-      const gps=makeProfileSelect(profiles,'',v=>setGroupProfile(g,v),'Profil für alle …',data.readOnly,'groupProfile');
-      h.appendChild(gps);
-    }
-
-    const b1=document.createElement('button'); b1.className='danger'; b1.textContent='Alle sperren'; b1.disabled=data.readOnly; b1.onclick=()=>groupAct(g,true);
-    const b2=document.createElement('button'); b2.className='ok'; b2.textContent='Alle freigeben'; b2.disabled=data.readOnly; b2.onclick=()=>groupAct(g,false);
+    const name=document.createElement('strong'); name.textContent=g; h.appendChild(name);
+    const budget=document.createElement('span'); budget.className='groupBudget'; budget.textContent=sum.rest===null?'Budget: —':`Rest ${fmt(sum.rest)}`; h.appendChild(budget);
+    if(profiles.length){ const gps=makeProfileSelect(profiles,'',v=>setGroupProfile(g,v),'Profil für alle …',data.readOnly,'groupProfile'); h.appendChild(gps); }
+    const b1=document.createElement('button'); b1.className='danger'; b1.textContent='Alle sperren'; b1.disabled=data.readOnly; b1.addEventListener('click',()=>groupAct(g,true));
+    const b2=document.createElement('button'); b2.className='ok'; b2.textContent='Alle freigeben'; b2.disabled=data.readOnly; b2.addEventListener('click',()=>groupAct(g,false));
     h.appendChild(b1); h.appendChild(b2); c.appendChild(h);
 
     devs.forEach(d=>{
       const row=document.createElement('div'); row.className='device';
-      const status=d.error?'err':(d.wan==='granted'?'on':(d.wan==='denied'?'off':'err'));
-      const statusText=d.error?'Fehler':(d.wan==='granted'?'Internet erlaubt':(d.wan==='denied'?'Internet gesperrt':'Status unbekannt'));
-      let time='';
-      if (Number(d.timeMax)>0) {
-        const rest=Math.max(0,Number(d.timeMax)-Number(d.timeUsed));
-        time=`${fmt(rest)} Rest`;
-      }
-
+      const st=statusFor(d);
       const info=document.createElement('div');
-      const name=document.createElement('div'); name.className='devname'; name.textContent=d.name||'Gerät'; info.appendChild(name);
+      const dn=document.createElement('div'); dn.className='devname'; dn.textContent=d.name||'Gerät'; info.appendChild(dn);
       const meta=document.createElement('div'); meta.className='metaLine';
       const ip=document.createElement('span'); ip.className='ipmeta'; ip.textContent=d.ip||''; meta.appendChild(ip);
-      if (profiles.length) {
-        const ps=makeProfileSelect(profiles,d.profileId||'',v=>setProfile(d.ip,v),d.profile||'Profil wählen',data.readOnly);
-        meta.appendChild(ps);
-      } else {
-        const p=document.createElement('span'); p.className='ipmeta'; p.textContent='· Profil '+(d.profile||'—'); meta.appendChild(p);
-      }
-      if (time) { const t=document.createElement('span'); t.className='timeinfo'; t.textContent='· '+time; meta.appendChild(t); }
-      info.appendChild(meta);
+      if(profiles.length){ const ps=makeProfileSelect(profiles,d.profileId||'',v=>setProfile(d.ip,v),d.profile||'Profil wählen',data.readOnly); meta.appendChild(ps); }
+      else { const pr=document.createElement('span'); pr.className='ipmeta'; pr.textContent='Profil '+(d.profile||'—'); meta.appendChild(pr); }
+      if(Number(d.timeMax)>0 && !d.isTimeShared){ const t=document.createElement('span'); t.className='timeinfo'; t.textContent=`Rest ${fmt(Math.max(0,Number(d.timeMax)-Number(d.timeUsed)))}`; meta.appendChild(t); }
+      info.appendChild(meta); row.appendChild(info);
 
-      const state=document.createElement('div'); state.className='state'; state.innerHTML=`<span class="dot ${status}"></span>${esc(statusText)}`;
-      row.appendChild(info); row.appendChild(state);
+      const state=document.createElement('div'); state.className='state'; state.innerHTML=`<span class="dot ${st.cls}"></span>${esc(st.text)}`; row.appendChild(state);
+      const ts=document.createElement('div'); ts.className='ticketState';
+      const n=Number(d.ticketsInAdvance)||0, valid=Number(d.ticketValid)||0;
+      ts.innerHTML=`<div>Zusatz-Tickets: <strong>${n}</strong></div><div class="sub">${valid?`${valid} min Ticketzeit aktiv`:(Number(d.timeMax)>0?'bereit für +45 min':'kein Zeitplan/Budget')}</div>`; row.appendChild(ts);
 
       const a=document.createElement('div'); a.className='actions';
-      const s=document.createElement('button'); s.className='danger'; s.textContent='Sperren'; s.disabled=data.readOnly; s.onclick=()=>act(d.ip,true);
-      const f=document.createElement('button'); f.className='ok'; f.textContent='Freigeben'; f.disabled=data.readOnly; f.onclick=()=>act(d.ip,false);
-      a.appendChild(s); a.appendChild(f); row.appendChild(a); c.appendChild(row);
+      const add=document.createElement('button'); add.className='ticket'; add.textContent='+45 min'; add.disabled=data.readOnly||Number(d.timeMax)<=0||d.disallow===true; add.title=d.disallow===true?'Gerät ist manuell gesperrt':(Number(d.timeMax)<=0?'Profil hat kein Zeitbudget/keinen Zeitplan':'45 Minuten Zusatzzeit'); add.addEventListener('click',()=>addTicketTime(d.ip));
+      const s=document.createElement('button'); s.className='danger'; s.textContent='Sperren'; s.disabled=data.readOnly; s.addEventListener('click',()=>act(d.ip,true));
+      const f=document.createElement('button'); f.className='ok'; f.textContent='Freigeben'; f.disabled=data.readOnly; f.addEventListener('click',()=>act(d.ip,false));
+      a.appendChild(add); a.appendChild(s); a.appendChild(f); row.appendChild(a); c.appendChild(row);
     });
     root.appendChild(c);
   });
-  if (!Object.keys(by).length) root.innerHTML='<div class="card sub">Noch keine Geräte mit IPv4-Adresse konfiguriert.</div>';
+  if(!Object.keys(by).length) root.innerHTML='<div class="card sub">Noch keine Geräte mit IPv4-Adresse konfiguriert.</div>';
 }
-function handleMessage(data) {
-  if (typeof data === 'string') { try { data=JSON.parse(data); } catch(e){ return; } }
-  if (!data || (data.target && data.target!=='*' && data.target!==clientId)) return;
-  if (data.kind==='auth') {
-    if (data.ok) { setUnlocked(data); if (data.payload) render(data.payload); }
+function render(data){
+  if(!unlocked) return;
+  lastData=data;
+  const mode=document.getElementById('mode'); mode.textContent=data.readOnly?'TEST · nur lesen':'STEUERUNG AKTIV'; mode.className='badge'+(data.readOnly?' warn':'');
+  document.getElementById('msg').textContent=data.message||'';
+  const summaries=buildSummaries(data);
+  renderCompact(data,summaries);
+  renderFull(data,summaries);
+}
+function handleMessage(data){
+  if(typeof data==='string'){ try{data=JSON.parse(data);}catch(e){return;} }
+  if(!data||(data.target&&data.target!=='*'&&data.target!==clientId)) return;
+  if(data.kind==='auth'){
+    if(data.ok){ setUnlocked(data); if(data.payload)render(data.payload); }
     else setLocked(data.message||'PIN falsch.');
-  } else if (data.kind==='status') {
-    if (unlocked) { if(data.expires) expiresAt=data.expires*1000; render(data.payload||{}); }
-  } else if (data.kind==='locked') setLocked(data.message||'Gesperrt.');
+  }else if(data.kind==='status'){
+    if(unlocked){ if(data.expires)expiresAt=data.expires*1000; render(data.payload||{}); }
+  }else if(data.kind==='locked') setLocked(data.message||'Gesperrt.');
 }
+
+document.querySelectorAll('[data-digit]').forEach(b=>b.addEventListener('click',()=>digit(b.dataset.digit||'')));
+document.getElementById('backspace').addEventListener('click',clearPin);
+document.getElementById('pinOk').addEventListener('click',submitPin);
+document.getElementById('refreshBtn').addEventListener('click',refresh);
+document.getElementById('lockBtn').addEventListener('click',lockNow);
+window.addEventListener('resize',updateLayout);
+if(window.ResizeObserver){ new ResizeObserver(updateLayout).observe(document.getElementById('app')); }
+updateLayout();
 setTimeout(()=>send('hello'),100);
 </script>
 </body>

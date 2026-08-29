@@ -128,6 +128,18 @@ class FritzKindersicherung extends IPSModuleStrict
             $group = (string) ($cmd['group'] ?? '');
             $profileId = (string) ($cmd['profileId'] ?? '');
             $this->HandleGroupProfile($clientId, $group, $profileId);
+            return;
+        }
+
+        if ($op === 'add_ticket_time') {
+            $ip = (string) ($cmd['ip'] ?? '');
+            $this->HandleAddTicketTime($clientId, $ip);
+            return;
+        }
+
+        if ($op === 'mark_ticket') {
+            $this->HandleMarkTicket($clientId);
+            return;
         }
     }
 
@@ -454,6 +466,109 @@ class FritzKindersicherung extends IPSModuleStrict
         }
     }
 
+    private function HandleAddTicketTime(string $clientId, string $ip): void
+    {
+        if ($this->ReadPropertyBoolean('ReadOnly')) {
+            $this->SendStatusToClient($clientId, 'TESTMODUS: Es wurde keine Zusatzzeit vergeben.');
+            return;
+        }
+        if (!$this->IsConfiguredIP($ip)) {
+            $this->SendStatusToClient($clientId, 'Abgelehnt: IP ist nicht in der Modulkonfiguration freigegeben.');
+            return;
+        }
+
+        try {
+            $service = $this->DiscoverHostFilterService(false);
+            $result = $this->SoapAction($service, 'AddTicketTimeToHostEntryByIP', [
+                'NewIPv4Address' => $ip
+            ]);
+            $ticketValid = (int) ($result['NewTicketValid'] ?? 0);
+            $tickets = (int) ($result['NewTicketsInAdvance'] ?? 0);
+            $msg = '+45 Minuten vergeben.';
+            if ($ticketValid > 0 || $tickets > 0) {
+                $msg .= ' Zusatz-Tickets: ' . $tickets;
+                if ($ticketValid > 0) {
+                    $msg .= ' · aktuelle Ticketzeit ' . $ticketValid . ' min';
+                }
+            }
+            $this->SendStatusToClient($clientId, $msg);
+        } catch (Throwable $e) {
+            $this->SendStatusToClient($clientId, 'FRITZ!Box Fehler bei +45 Minuten: ' . $e->getMessage());
+        }
+    }
+
+    private function HandleMarkTicket(string $clientId): void
+    {
+        if ($this->ReadPropertyBoolean('ReadOnly')) {
+            $this->SendStatusToClient($clientId, 'TESTMODUS: Es wurde kein Ticketcode markiert.');
+            return;
+        }
+
+        try {
+            $service = $this->DiscoverHostFilterService(false);
+            $result = $this->SoapAction($service, 'MarkTicket', []);
+            $ticket = trim((string) ($result['NewTicketID'] ?? ''));
+            if (!preg_match('/^\d{6}$/', $ticket)) {
+                throw new Exception('FRITZ!Box hat keinen gültigen 6-stelligen Ticketcode geliefert.');
+            }
+
+            $issued = $this->GetJsonBuffer('IssuedTickets');
+            $issued[$ticket] = ['created' => time(), 'status' => 'marked'];
+            if (count($issued) > 12) {
+                uasort($issued, static fn(array $a, array $b): int => ((int) ($a['created'] ?? 0)) <=> ((int) ($b['created'] ?? 0)));
+                while (count($issued) > 12) {
+                    array_shift($issued);
+                }
+            }
+            $this->SetJsonBuffer('IssuedTickets', $issued);
+            $this->SendStatusToClient($clientId, 'Ticketcode ' . $ticket . ' bereit. Er kann einmalig für 45 Minuten eingelöst werden.');
+        } catch (Throwable $e) {
+            $msg = $e->getMessage();
+            if (str_contains($msg, '714')) {
+                $msg = 'Kein neuer unmarkierter Ticketcode verfügbar. Bereits erzeugte Codes in der FRITZ!Box bleiben gültig.';
+            }
+            $this->SendStatusToClient($clientId, 'Ticket: ' . $msg);
+        }
+    }
+
+    private function GetIssuedTicketStatus(): array
+    {
+        $issued = $this->GetJsonBuffer('IssuedTickets');
+        if ($issued === []) {
+            return [];
+        }
+
+        try {
+            $service = $this->DiscoverHostFilterService(false);
+            foreach ($issued as $ticket => &$entry) {
+                if (!preg_match('/^\d{6}$/', (string) $ticket)) {
+                    unset($issued[$ticket]);
+                    continue;
+                }
+                try {
+                    $status = $this->SoapAction($service, 'GetTicketIDStatus', ['NewTicketID' => (string) $ticket]);
+                    $entry['status'] = (string) ($status['NewTicketIDStatus'] ?? ($entry['status'] ?? 'unknown'));
+                } catch (Throwable $ignored) {
+                    $entry['status'] = (string) ($entry['status'] ?? 'unknown');
+                }
+            }
+            unset($entry);
+            $this->SetJsonBuffer('IssuedTickets', $issued);
+        } catch (Throwable $ignored) {
+        }
+
+        $rows = [];
+        foreach ($issued as $ticket => $entry) {
+            $rows[] = [
+                'id' => (string) $ticket,
+                'status' => (string) ($entry['status'] ?? 'unknown'),
+                'created' => (int) ($entry['created'] ?? 0)
+            ];
+        }
+        usort($rows, static fn(array $a, array $b): int => $b['created'] <=> $a['created']);
+        return $rows;
+    }
+
     private function SendStatusToClient(string $clientId, string $message): void
     {
         $expires = $this->GetAuthorizationExpiry($clientId);
@@ -499,6 +614,9 @@ class FritzKindersicherung extends IPSModuleStrict
                     'profileId' => '',
                     'timeUsed' => 0,
                     'timeMax' => 0,
+                    'ticketsInAdvance' => 0,
+                    'ticketValid' => 0,
+                    'isTimeShared' => false,
                     'error' => ''
                 ];
 
@@ -511,6 +629,9 @@ class FritzKindersicherung extends IPSModuleStrict
                     $row['profile'] = (string) ($profileNames[$profileId] ?? $profileId);
                     $row['timeUsed'] = (int) ($entry['NewTimeUsed'] ?? 0);
                     $row['timeMax'] = (int) ($entry['NewTimeMax'] ?? 0);
+                    $row['ticketsInAdvance'] = (int) ($entry['NewTicketsInAdvance'] ?? 0);
+                    $row['ticketValid'] = (int) ($entry['NewTicketValid'] ?? 0);
+                    $row['isTimeShared'] = $this->ToBool($entry['NewIsTimeShared'] ?? false);
 
                     // Disallow-Flag separat lesen, falls verfügbar.
                     try {
@@ -543,6 +664,8 @@ class FritzKindersicherung extends IPSModuleStrict
             'readOnly' => $this->ReadPropertyBoolean('ReadOnly'),
             'devices' => $result,
             'profiles' => $profileList,
+            'ticketTimeMinutes' => 45,
+            'issuedTickets' => $this->GetIssuedTicketStatus(),
             'message' => $message
         ];
         $this->SetBuffer('LastPayload', json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));

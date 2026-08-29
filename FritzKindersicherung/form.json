@@ -149,7 +149,7 @@
   "actions": [
     {
       "type": "Label",
-      "caption": "BUILD4: Doppelte Überschrift entfernt. FRITZ!-Zugangsprofile können direkt pro Gerät oder für eine ganze Gruppe gewählt werden. Im Testmodus bleiben alle Schalt- und Profilaktionen deaktiviert."
+      "caption": "BUILD5: 2x2-PIN-Ansicht responsive, automatische Kompakt-/Großdarstellung, Gruppen-Restzeit, Zusatz-Tickets pro Gerät, +45-Minuten-Taste und Ticketcode-Anzeige. Die Symcon-Kachel selbst kann nicht automatisch vergrößert werden; für Details den ↗-Knopf der Kachel verwenden."
     },
     {
       "type": "Button",
