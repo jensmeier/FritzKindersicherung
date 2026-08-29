@@ -149,7 +149,7 @@
   "actions": [
     {
       "type": "Label",
-      "caption": "BUILD5: 2x2-PIN-Ansicht responsive, automatische Kompakt-/Großdarstellung, Gruppen-Restzeit, Zusatz-Tickets pro Gerät, +45-Minuten-Taste und Ticketcode-Anzeige. Die Symcon-Kachel selbst kann nicht automatisch vergrößert werden; für Details den ↗-Knopf der Kachel verwenden."
+      "caption": "BUILD6: Symcon-9-Vollbildmodus aktiviert (HTML-SDK Typ 2), Abstand zum Symcon-Kacheltitel korrigiert, 2x2-PIN/Toolbar ohne Überlappung und Gruppen mit Restzeit werden in der Kompaktansicht zuerst gezeigt."
     },
     {
       "type": "Button",

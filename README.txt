@@ -1,16 +1,16 @@
-FRITZ!Box Kindersicherung – BUILD5
+FRITZ!Box Kindersicherung – BUILD6
 
-Neu:
-- PIN-Feld für kleine 2x2-Kacheln optimiert (automatische Größenanpassung)
-- automatische Kompaktansicht in kleinen Kacheln, Detailansicht bei größerer Kachel
-- Restzeit des gemeinsamen Budgets einmal pro Person/Gruppe
-- Zusatz-Tickets/Ticketzeit pro Gerät sichtbar
-- +45 Minuten über offizielle TR-064-Funktion AddTicketTimeToHostEntryByIP
-- 6-stelligen Ticketcode über MarkTicket erzeugen; angezeigt werden nur in Symcon erzeugte Codes
-- Sperren/Freigeben weiterhin pro Gerät und pro Gruppe
+Neu/Fixes:
+- Symcon 9 Vollbild-Unterstützung: SetVisualizationType(2)
+  -> dieselbe geschützte HTML-Oberfläche wird jetzt auch in der maximierten Ansicht verwendet
+- Migration auch für bestehende BUILD1-5-Instanzen über ApplyChanges()
+- oberer Sicherheitsabstand zum Symcon-Kacheltitel, damit TEST-Badge/Buttons und Titel nicht mehr übereinander liegen
+- 2x2-PIN-Feld nochmals auf die tatsächliche Tablet-Kachel angepasst
+- Kompaktansicht priorisiert Gruppen mit echtem Restzeit-Budget (z. B. Paul) vor Gruppen ohne Zeitbudget
+- Restzeit, Zusatz-Tickets, Gerätesperren, +45 Minuten und Ticketcodes aus BUILD5 bleiben erhalten
 
 Hinweis:
-IP-Symcon verwaltet die Kachelgröße. Das HTML-Modul kann seine 2x2-Kachel nicht selbst nach PIN-Eingabe auf Vollbild vergrößern. Die Darstellung passt sich aber automatisch an, sobald die Kachel mit dem Symcon-↗-Knopf vergrößert wird.
+Das Modul kann die Symcon-Kachel nicht selbstständig in Vollbild öffnen. Ab Symcon 9 kann aber der vorhandene ↗-Knopf nun die gleiche HTML-SDK-Oberfläche korrekt im Vollbild anzeigen.
 
 Sicherheit:
 Im Testmodus werden keine Sperren, Profilwechsel, +45-Minuten-Buchungen oder Ticketcodes ausgeführt.

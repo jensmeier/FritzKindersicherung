@@ -4,9 +4,9 @@
   "name": "FRITZ Kindersicherung",
   "url": "https://github.com/jensmeier/FritzKindersicherung",
   "compatibility": {
-    "version": "8.1"
+    "version": "9.0"
   },
   "version": "1.0",
-  "build": 5,
+  "build": 6,
   "date": 1788019200
 }
