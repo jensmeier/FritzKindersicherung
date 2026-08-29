@@ -52,12 +52,14 @@
           "width": "80px",
           "edit": {
             "type": "CheckBox"
-          }
+          },
+          "save": true
         },
         {
           "caption": "Person / Gruppe",
           "name": "Group",
-          "width": "220px"
+          "width": "220px",
+          "save": true
         }
       ],
       "values": [],

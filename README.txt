@@ -1,4 +1,4 @@
-FRITZ!Box Kindersicherung – BUILD7
+FRITZ!Box Kindersicherung – BUILD9
 
 Neu/Fixes:
 - Symcon 9 Vollbild-Unterstützung: SetVisualizationType(2)
@@ -27,3 +27,12 @@ BUILD8
 - Zeigt Restzeit, Profil, Zusatz-Tickets und optional Online-Geräte.
 - Reine Anzeige ohne PIN und ohne Schaltbefehle; die geschützte Hauptkachel bleibt unverändert.
 - Automatische Größenanpassung anhand der tatsächlich verfügbaren Kachelbreite/-höhe (ResizeObserver), nicht anhand einer fest angenommenen Tablet-Zollgröße.
+
+
+BUILD9
+- Fehler „Variable is marked as read-only ... PublicStatus“ behoben.
+  Der Status für „Onlinezeit Kinder“ wird jetzt nur noch über den Modul-Buffer und FKS_GetPublicStatus bereitgestellt.
+- Auswahl in „Onlinezeit Kinder > Im Wechsel anzeigen“ bleibt jetzt dauerhaft gespeichert.
+  Ursache: Der nicht editierbare Gruppenname wurde bisher nicht als Listeneigenschaft gespeichert; dadurch ging die Zuordnung nach „Übernehmen“ verloren.
+- Die Spalten „Anzeigen“ und „Person / Gruppe“ werden jetzt beide persistent gespeichert.
+- Bestehende BUILD8-Einstellungen, Geräte und Hauptinstanz bleiben erhalten.

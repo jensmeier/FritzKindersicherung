@@ -138,16 +138,8 @@ class OnlinezeitKinder extends IPSModuleStrict
             return ['devices' => [], 'message' => 'Ausgewählte Instanz ist keine FRITZ!Box Kindersicherung.'];
         }
 
-        $varId = @IPS_GetObjectIDByIdent('PublicStatus', $source);
-        if (is_int($varId) && $varId > 0) {
-            $json = (string) GetValue($varId);
-            $decoded = json_decode($json, true);
-            if (is_array($decoded)) {
-                return $decoded;
-            }
-        }
-
-        // Fallback für den ersten Lauf direkt nach dem Update auf BUILD8.
+        // BUILD9: Status direkt aus dem Modul-Buffer der Hauptinstanz abrufen.
+        // Die BUILD8-Zwischenvariable war auf dem Zielsystem schreibgeschützt.
         $fn = 'FKS_GetPublicStatus';
         if (function_exists($fn)) {
             try {
