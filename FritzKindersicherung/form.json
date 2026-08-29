@@ -149,7 +149,7 @@
   "actions": [
     {
       "type": "Label",
-      "caption": "BUILD8: Zusätzliche 1x1-Anzeigekachel „Onlinezeit Kinder“ ergänzt. Hauptkachel bleibt PIN-geschützt; Statusdaten werden ohne Zugangsdaten zentral bereitgestellt."
+      "caption": "BUILD10: Separate, PIN-geschützte „Elternansicht“ ergänzt. Sie verwendet dieselbe PIN und dieselben FRITZ!Box-Daten wie die Hauptinstanz und ist unabhängig vom problematischen Symcon-Vollbild."
     },
     {
       "type": "Button",

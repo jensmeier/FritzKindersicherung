@@ -1,0 +1,14 @@
+{
+  "id": "{75534A5C-3FC0-4CFF-8B1B-78E35FA5DD81}",
+  "name": "Elternansicht",
+  "type": 3,
+  "vendor": "FRITZ! / JZCG",
+  "aliases": [
+    "FRITZ!Box Elternansicht"
+  ],
+  "parentRequirements": [],
+  "childRequirements": [],
+  "implemented": [],
+  "prefix": "FKSE",
+  "url": "https://github.com/jensmeier/FritzKindersicherung"
+}

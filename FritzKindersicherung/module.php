@@ -87,6 +87,72 @@ class FritzKindersicherung extends IPSModuleStrict
         }
     }
 
+    /**
+     * Prüft die in der Hauptinstanz konfigurierte PIN, ohne sie nach außen zu geben.
+     * Wird von der separaten Elternansicht verwendet.
+     */
+    public function CheckPin(string $pin): bool
+    {
+        $configuredPin = $this->ReadPropertyString('TilePin');
+        if (!preg_match('/^\d{4,8}$/', $configuredPin) || !preg_match('/^\d{4,8}$/', $pin)) {
+            return false;
+        }
+        return hash_equals(hash('sha256', $configuredPin), hash('sha256', $pin));
+    }
+
+    /**
+     * Steuer-API für die separate Elternansicht. Die Elternansicht übernimmt
+     * selbst den PIN-Sitzungsschutz und ruft hier nur bereits freigegebene
+     * Aktionen auf. Sicherheitsprüfungen wie Testmodus, konfigurierte IPs und
+     * gültige Profile bleiben weiterhin in dieser Hauptinstanz aktiv.
+     */
+    public function ExecuteExternal(string $request): string
+    {
+        $cmd = json_decode($request, true);
+        if (!is_array($cmd)) {
+            return json_encode(['readOnly' => true, 'devices' => [], 'message' => 'Ungültiger Auftrag.'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        }
+
+        $op = (string) ($cmd['op'] ?? 'refresh');
+        $clientId = 'parent-' . $this->InstanceID;
+
+        try {
+            if ($op === 'refresh') {
+                $payload = $this->BuildStatusPayload('Elternansicht aktualisiert ' . date('H:i:s'));
+                return json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            }
+            if ($op === 'set_disallow') {
+                $this->HandleSetDisallow($clientId, (string) ($cmd['ip'] ?? ''), (bool) ($cmd['disallow'] ?? false));
+            } elseif ($op === 'set_profile') {
+                $this->HandleSetProfile($clientId, (string) ($cmd['ip'] ?? ''), (string) ($cmd['profileId'] ?? ''));
+            } elseif ($op === 'group_disallow') {
+                $this->HandleGroupDisallow($clientId, (string) ($cmd['group'] ?? ''), (bool) ($cmd['disallow'] ?? false));
+            } elseif ($op === 'group_profile') {
+                $this->HandleGroupProfile($clientId, (string) ($cmd['group'] ?? ''), (string) ($cmd['profileId'] ?? ''));
+            } elseif ($op === 'add_ticket_time') {
+                $this->HandleAddTicketTime($clientId, (string) ($cmd['ip'] ?? ''));
+            } elseif ($op === 'mark_ticket') {
+                $this->HandleMarkTicket($clientId);
+            } else {
+                $payload = $this->BuildStatusPayload('Unbekannte Aktion: ' . $op);
+                return json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            }
+
+            $cached = $this->GetBuffer('LastPayload');
+            if ($cached !== '') {
+                return $cached;
+            }
+            $payload = $this->BuildStatusPayload('Aktion ausgeführt.');
+            return json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        } catch (Throwable $e) {
+            return json_encode([
+                'readOnly' => $this->ReadPropertyBoolean('ReadOnly'),
+                'devices' => [],
+                'message' => 'Fehler in Elternansicht: ' . $e->getMessage()
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        }
+    }
+
     public function RequestAction(string $Ident, mixed $Value): void
     {
         if ($Ident !== 'command') {

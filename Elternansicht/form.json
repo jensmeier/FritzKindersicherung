@@ -1,0 +1,51 @@
+{
+  "elements": [
+    {
+      "type": "ExpansionPanel",
+      "caption": "Datenquelle",
+      "expanded": true,
+      "items": [
+        {
+          "type": "SelectModule",
+          "name": "SourceInstance",
+          "caption": "FRITZ!Box Kindersicherung",
+          "moduleID": "{8FD44702-1516-4F0D-A8A2-50F8840D6946}"
+        }
+      ]
+    },
+    {
+      "type": "ExpansionPanel",
+      "caption": "Elternansicht",
+      "expanded": true,
+      "items": [
+        {
+          "type": "NumberSpinner",
+          "name": "UnlockSeconds",
+          "caption": "Nach PIN automatisch wieder sperren",
+          "suffix": " Sekunden",
+          "minimum": 30,
+          "maximum": 1800
+        },
+        {
+          "type": "NumberSpinner",
+          "name": "RefreshSeconds",
+          "caption": "Anzeige aktualisieren alle",
+          "suffix": " Sekunden",
+          "minimum": 5,
+          "maximum": 300
+        }
+      ]
+    },
+    {
+      "type": "Label",
+      "caption": "Die Elternansicht verwendet automatisch dieselbe PIN wie die ausgewählte FRITZ!Box-Kindersicherung. FRITZ!Box-Zugangsdaten werden nicht doppelt gespeichert."
+    }
+  ],
+  "actions": [
+    {
+      "type": "Button",
+      "caption": "Elternansicht jetzt aktualisieren",
+      "onClick": "FKSE_Refresh($id); echo 'Elternansicht aktualisiert';"
+    }
+  ]
+}

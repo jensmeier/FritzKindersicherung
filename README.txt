@@ -36,3 +36,9 @@ BUILD9
   Ursache: Der nicht editierbare Gruppenname wurde bisher nicht als Listeneigenschaft gespeichert; dadurch ging die Zuordnung nach „Übernehmen“ verloren.
 - Die Spalten „Anzeigen“ und „Person / Gruppe“ werden jetzt beide persistent gespeichert.
 - Bestehende BUILD8-Einstellungen, Geräte und Hauptinstanz bleiben erhalten.
+
+BUILD10
+- Neue separate Instanz/Kachel „FRITZ!Box Elternansicht“.
+- Nutzt dieselbe PIN wie die Hauptinstanz, ohne PIN oder FRITZ!Box-Zugangsdaten zu duplizieren.
+- Vollständige Geräte-, Gruppen-, Profil-, Ticket- und +45-min-Steuerung in einer eigenen responsiven Kachel.
+- Kein Abhängigkeitsproblem mehr vom leeren Symcon-↗-Vollbild.
