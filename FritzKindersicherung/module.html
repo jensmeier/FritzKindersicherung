@@ -105,10 +105,10 @@ body.compact #compactView { display:block; }
 body.compact #fullView { display:none; }
 body.compact .hint { display:block; }
 body.compact #msg { display:none; }
-body.browserFullscreen #app { padding:10px; }
-body.browserFullscreen .hint { display:none !important; }
-#exitFsBtn { display:none; }
-body.browserFullscreen #exitFsBtn { display:inline-block; }
+body.parentView #app { padding:10px; }
+body.parentView .hint { display:none !important; }
+#backParentBtn { display:none; }
+body.parentView #backParentBtn { display:inline-block; }
 body.compact .top { min-height:32px; justify-content:flex-end; }
 body.compact .top .grow { display:none; }
 body.compact .top button { min-height:32px; min-width:32px; padding:3px 6px; }
@@ -140,11 +140,11 @@ body.compact .badge { font-size:9px; padding:3px 5px; }
       <div class="grow"></div>
       <span id="mode" class="badge"></span>
       <button type="button" id="refreshBtn" title="Aktualisieren">↻</button>
-      <button type="button" id="exitFsBtn" title="Vollansicht schließen">↙</button>
+      <button type="button" id="backParentBtn" title="Zurück und sperren">↙</button>
       <button type="button" id="lockBtn" title="Sperren">🔒</button>
     </div>
     <div id="msg"></div>
-    <div id="compactHint" class="hint">Nach korrekter PIN wird automatisch die Vollansicht geöffnet.</div>
+    <div id="compactHint" class="hint">Nach korrekter PIN wird automatisch die große Elternansicht geöffnet.</div>
 
     <div id="compactView">
       <div id="compactGroups" class="compactGrid"></div>
@@ -163,8 +163,7 @@ let unlocked=false;
 let expiresAt=0;
 let lockTimer=null;
 let lastData=null;
-let fullscreenRequestedForPin=false;
-let fullscreenFailed=false;
+let redirectPending=false;
 const clientId=getClientId();
 
 function getClientId(){
@@ -180,35 +179,70 @@ function send(op,extra={}){ requestAction('command',JSON.stringify(Object.assign
 function digit(d){ if(pin.length<8) pin+=d; paintDots(); }
 function clearPin(){ pin=pin.slice(0,-1); paintDots(); }
 function paintDots(){ document.getElementById('dots').textContent=pin.length?'•'.repeat(pin.length):'••••'; }
-function fullscreenElement(){ return document.fullscreenElement || document.webkitFullscreenElement || null; }
-function requestBrowserFullscreen(){
-  fullscreenRequestedForPin=true;
-  fullscreenFailed=false;
-  const el=document.documentElement;
+function topLocationInfo(){
   try{
-    let p=null;
-    if(el.requestFullscreen) p=el.requestFullscreen({navigationUI:'hide'});
-    else if(el.webkitRequestFullscreen) p=el.webkitRequestFullscreen();
-    else { fullscreenFailed=true; return; }
-    if(p&&typeof p.catch==='function') p.catch(()=>{ fullscreenFailed=true; updateFullscreenState(); });
-  }catch(e){ fullscreenFailed=true; }
+    const href=window.top.location.href;
+    const u=new URL(href);
+    const m=(u.hash||'').match(/^#(\d+)/);
+    return {href, id:m?Number(m[1]):0, url:u};
+  }catch(e){
+    return {href:'',id:0,url:null};
+  }
 }
-function exitBrowserFullscreen(){
+function buildVisualizationUrl(id){
+  const info=topLocationInfo();
+  if(info.url){ info.url.hash='#'+Number(id); return info.url.toString(); }
   try{
-    if(document.fullscreenElement&&document.exitFullscreen) return document.exitFullscreen();
-    if(document.webkitFullscreenElement&&document.webkitExitFullscreen) return document.webkitExitFullscreen();
+    const u=new URL(document.referrer||window.location.href);
+    u.hash='#'+Number(id); return u.toString();
+  }catch(e){ return '/#'+Number(id); }
+}
+function navigateTop(url){
+  try{
+    // Fully Kiosk JavaScript Interface, falls in den Advanced Web Settings aktiviert.
+    if(window.fully){
+      if(typeof window.fully.loadUrl==='function'){ window.fully.loadUrl(url); return true; }
+      if(typeof window.fully.loadURL==='function'){ window.fully.loadURL(url); return true; }
+    }
   }catch(e){}
+  try{ window.top.location.assign(url); return true; }catch(e){}
+  try{ window.open(url,'_top'); return true; }catch(e){}
+  return false;
 }
-function updateFullscreenState(){
-  const active=!!fullscreenElement();
-  document.body.classList.toggle('browserFullscreen',active);
-  updateLayout();
+function isParentVisualization(parentId){
+  if(!parentId) return false;
+  return topLocationInfo().id===Number(parentId);
+}
+function maybeOpenParent(data){
+  const parentId=Number(data&&data.parentVisualizationId||0);
+  if(!data||!data.autoOpenParentVisualization||!parentId) return false;
+  if(isParentVisualization(parentId)){
+    document.body.classList.add('parentView');
+    updateLayout();
+    return false;
+  }
+  const info=topLocationInfo();
+  if(info.href) sessionStorage.setItem('fksReturnUrl',info.href);
+  sessionStorage.setItem('fksParentVisualizationId',String(parentId));
+  redirectPending=true;
+  const ok=navigateTop(buildVisualizationUrl(parentId));
+  if(!ok){
+    redirectPending=false;
+    const h=document.getElementById('compactHint');
+    if(h) h.textContent='Elternansicht konnte nicht geöffnet werden. Bitte Fully Kiosk bzw. die Visualisierungs-ID prüfen.';
+  }
+  return ok;
+}
+function returnToPreviousVisualization(){
+  const back=sessionStorage.getItem('fksReturnUrl')||'';
+  sessionStorage.removeItem('fksReturnUrl');
+  sessionStorage.removeItem('fksParentVisualizationId');
+  if(back) return navigateTop(back);
+  try{ if(window.history.length>1){ window.top.history.back(); return true; } }catch(e){}
+  return false;
 }
 function submitPin(){
   if(pin.length<4){ document.getElementById('lockmsg').textContent='Mindestens 4 Ziffern.'; return; }
-  // BUILD11: Browser-Vollbild wird direkt im OK-Klick angefordert. Nur hier besteht
-  // die vom Browser geforderte Benutzeraktivierung. Bei falscher PIN wird es sofort wieder beendet.
-  requestBrowserFullscreen();
   send('unlock',{pin}); pin=''; paintDots();
 }
 function setLocked(message=''){
@@ -217,21 +251,16 @@ function setLocked(message=''){
   document.getElementById('unlocked').style.display='none';
   document.getElementById('lockmsg').textContent=message;
   if(lockTimer) clearInterval(lockTimer);
-  if(fullscreenRequestedForPin&&fullscreenElement()) exitBrowserFullscreen();
-  fullscreenRequestedForPin=false;
+  const parentId=Number(sessionStorage.getItem('fksParentVisualizationId')||0);
+  if(parentId && isParentVisualization(parentId)) setTimeout(returnToPreviousVisualization,80);
 }
 function setUnlocked(data){
   unlocked=true; expiresAt=(data.expires||0)*1000;
   document.getElementById('locked').style.display='none';
   document.getElementById('unlocked').style.display='flex';
   if(lockTimer) clearInterval(lockTimer);
-  lockTimer=setInterval(()=>{ if(expiresAt&&Date.now()>expiresAt) setLocked('Automatisch gesperrt.'); },1000);
-  if(fullscreenFailed&&!fullscreenElement()){
-    const h=document.getElementById('compactHint');
-    if(h) h.textContent='Vollansicht wurde vom Browser/App nicht erlaubt. Die Steuerung bleibt in der Kachel.';
-  }
-  fullscreenRequestedForPin=false;
-  updateFullscreenState();
+  lockTimer=setInterval(()=>{ if(expiresAt&&Date.now()>expiresAt){ send('lock'); setLocked('Automatisch gesperrt.'); } },1000);
+  updateLayout();
 }
 function updateLayout(){
   const compact=window.innerWidth<560 || window.innerHeight<470;
@@ -401,10 +430,10 @@ function handleMessage(data){
   if(typeof data==='string'){ try{data=JSON.parse(data);}catch(e){return;} }
   if(!data||(data.target&&data.target!=='*'&&data.target!==clientId)) return;
   if(data.kind==='auth'){
-    if(data.ok){ setUnlocked(data); if(data.payload)render(data.payload); }
+    if(data.ok){ setUnlocked(data); if(data.payload){ render(data.payload); setTimeout(()=>maybeOpenParent(data.payload),60); } }
     else setLocked(data.message||'PIN falsch.');
   }else if(data.kind==='status'){
-    if(unlocked){ if(data.expires)expiresAt=data.expires*1000; render(data.payload||{}); }
+    if(unlocked){ if(data.expires)expiresAt=data.expires*1000; const pl=data.payload||{}; render(pl); if(pl.parentVisualizationId&&isParentVisualization(pl.parentVisualizationId)) document.body.classList.add('parentView'); }
   }else if(data.kind==='locked') setLocked(data.message||'Gesperrt.');
 }
 
@@ -412,13 +441,13 @@ document.querySelectorAll('[data-digit]').forEach(b=>b.addEventListener('click',
 document.getElementById('backspace').addEventListener('click',clearPin);
 document.getElementById('pinOk').addEventListener('click',submitPin);
 document.getElementById('refreshBtn').addEventListener('click',refresh);
-document.getElementById('exitFsBtn').addEventListener('click',exitBrowserFullscreen);
+document.getElementById('backParentBtn').addEventListener('click',()=>{ send('lock'); setLocked('Gesperrt.'); });
 document.getElementById('lockBtn').addEventListener('click',lockNow);
-document.addEventListener('fullscreenchange',updateFullscreenState);
-document.addEventListener('webkitfullscreenchange',updateFullscreenState);
 window.addEventListener('resize',updateLayout);
 if(window.ResizeObserver){ new ResizeObserver(updateLayout).observe(document.getElementById('app')); }
-updateFullscreenState();
+updateLayout();
+const rememberedParent=Number(sessionStorage.getItem('fksParentVisualizationId')||0);
+if(rememberedParent&&isParentVisualization(rememberedParent)) document.body.classList.add('parentView');
 setTimeout(()=>send('hello'),100);
 </script>
 </body>

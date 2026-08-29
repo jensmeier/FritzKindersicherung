@@ -49,6 +49,27 @@
     },
     {
       "type": "ExpansionPanel",
+      "caption": "Elternansicht auf Tablet / Fully Kiosk",
+      "expanded": true,
+      "items": [
+        {
+          "type": "CheckBox",
+          "name": "AutoOpenParentVisualization",
+          "caption": "Nach korrekter PIN automatisch große Eltern-Visualisierung öffnen"
+        },
+        {
+          "type": "SelectInstance",
+          "name": "ParentVisualizationID",
+          "caption": "Kachel-Visualisierung für Elternansicht"
+        },
+        {
+          "type": "Label",
+          "caption": "Für Symcon 9.0: Eine zweite Kachel-Visualisierung anlegen, darin nur einen Link auf diese Kindersicherungs-Instanz platzieren und die Kachel groß aufziehen. Die Visualisierung hier auswählen. Die 2x2-PIN-Kachel springt danach automatisch dorthin; beim Sperren geht es zurück."
+        }
+      ]
+    },
+    {
+      "type": "ExpansionPanel",
       "caption": "Sicherheit und Aktualisierung",
       "expanded": true,
       "items": [
@@ -149,7 +170,7 @@
   "actions": [
     {
       "type": "Label",
-      "caption": "BUILD8: Zusätzliche 1x1-Anzeigekachel „Onlinezeit Kinder“ ergänzt. Hauptkachel bleibt PIN-geschützt; Statusdaten werden ohne Zugangsdaten zentral bereitgestellt."
+      "caption": "BUILD12: Fully-Kiosk-Workaround für Symcon 9.0: 2x2 PIN-Kachel kann nach korrekter PIN automatisch auf eine separate große Kachel-Visualisierung wechseln. Onlinezeit-Kinder bleibt unverändert."
     },
     {
       "type": "Button",

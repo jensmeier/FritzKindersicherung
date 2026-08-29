@@ -24,6 +24,9 @@ class FritzKindersicherung extends IPSModuleStrict
         $this->RegisterPropertyBoolean('ReadOnly', true);
         $this->RegisterPropertyInteger('RefreshSeconds', 60);
         $this->RegisterPropertyString('Devices', '[]');
+        // BUILD12: Optionale eigene Kachel-Visualisierung als große Elternansicht.
+        $this->RegisterPropertyInteger('ParentVisualizationID', 0);
+        $this->RegisterPropertyBoolean('AutoOpenParentVisualization', true);
 
         // BUILD9: Status für Zusatzanzeigen wird ausschließlich im Modul-Buffer gehalten.
         // Dadurch entsteht keine schreibgeschützte Variable und keine Warnung beim Aktualisieren.
@@ -700,6 +703,8 @@ class FritzKindersicherung extends IPSModuleStrict
             'profiles' => $profileList,
             'ticketTimeMinutes' => 45,
             'issuedTickets' => $this->GetIssuedTicketStatus(),
+            'parentVisualizationId' => $this->ReadPropertyInteger('ParentVisualizationID'),
+            'autoOpenParentVisualization' => $this->ReadPropertyBoolean('AutoOpenParentVisualization'),
             'message' => $message
         ];
         $json = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);

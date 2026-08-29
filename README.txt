@@ -19,3 +19,9 @@ BUILD11:
 Hintergrund:
 Der installierte Symcon-9.0-Kernel vom 15.06.2026 unterstützt die HTML-SDK-Vollbilddarstellung
 noch nicht nativ. BUILD11 nutzt deshalb bewusst nicht SetVisualizationType(2).
+
+
+BUILD12:
+- Fully-Kiosk/Symcon-9.0-Workaround: Nach erfolgreicher PIN kann automatisch auf eine separate große Kachel-Visualisierung gewechselt werden.
+- Rückkehr/Sperren führt zurück zur vorherigen Visualisierung.
+- Keine zusätzliche Eltern-Modulinstanz nötig; die zweite Visualisierung enthält nur einen Link auf dieselbe Kindersicherungs-Instanz.
