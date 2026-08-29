@@ -1,44 +1,21 @@
-FRITZ!Box Kindersicherung – BUILD9
+FRITZ!Box Kindersicherung – BUILD11
 
-Neu/Fixes:
-- Symcon 9 Vollbild-Unterstützung: SetVisualizationType(2)
-  -> dieselbe geschützte HTML-Oberfläche wird jetzt auch in der maximierten Ansicht verwendet
-- Migration auch für bestehende BUILD1-5-Instanzen über ApplyChanges()
-- oberer Sicherheitsabstand zum Symcon-Kacheltitel, damit TEST-Badge/Buttons und Titel nicht mehr übereinander liegen
-- 2x2-PIN-Feld nochmals auf die tatsächliche Tablet-Kachel angepasst
-- Kompaktansicht priorisiert Gruppen mit echtem Restzeit-Budget (z. B. Paul) vor Gruppen ohne Zeitbudget
-- Restzeit, Zusatz-Tickets, Gerätesperren, +45 Minuten und Ticketcodes aus BUILD5 bleiben erhalten
+Basis: BUILD9 (stabile Hauptkachel + Onlinezeit Kinder).
 
-Hinweis:
-Das Modul kann die Symcon-Kachel nicht selbstständig in Vollbild öffnen. Ab Symcon 9 kann aber der vorhandene ↗-Knopf nun die gleiche HTML-SDK-Oberfläche korrekt im Vollbild anzeigen.
+BUILD11:
+- Keine separate Elternansicht / keine zusätzliche Eltern-Kachel.
+- Hauptinstanz bleibt SetVisualizationType(1), passend zum vorhandenen Symcon-9.0-Stand.
+- Nach Klick auf OK bei der PIN fordert die HTML-Kachel Browser-/WebView-Vollbild an.
+  Dadurch vergrößert sich dieselbe PIN-Kachel nach erfolgreicher PIN auf die gesamte Anzeige.
+- Bei falscher PIN bzw. beim Sperren/Timeout wird Browser-Vollbild wieder beendet.
+- In der Vollansicht wird automatisch das vorhandene Großlayout mit Gruppen, Geräten, Profilen,
+  Sperren/Freigeben, +45 min und Ticketcodes verwendet.
+- Neuer Pfeil ↙ in der freigeschalteten Vollansicht beendet nur das Vollbild; die PIN-Sitzung bleibt
+  bis zum normalen Timeout oder bis zum Schloss-Button gültig.
+- Fallback: Falls Browser/App die Fullscreen-API nicht erlaubt, bleibt die Steuerung in der 2x2-Kachel
+  und zeigt einen Hinweis.
+- Onlinezeit Kinder aus BUILD9 bleibt unverändert enthalten.
 
-Sicherheit:
-Im Testmodus werden keine Sperren, Profilwechsel, +45-Minuten-Buchungen oder Ticketcodes ausgeführt.
-
-BUILD7:
-- Regression aus BUILD6 behoben: SetVisualizationType wieder auf 1.
-- PIN-Kachel wird dadurch wieder direkt als HTML-SDK-Kachel dargestellt.
-- Vollbild über den Symcon-Pfeil bleibt vorerst deaktiviert/ungeeignet; die kompakte 2x2-Kachel bleibt funktionsfähig.
-
-BUILD8
-- Neue separate Instanz/Kachel „Onlinezeit Kinder“ für 1x1.
-- Wechselt standardmäßig alle 5 Sekunden durch die in der Hauptinstanz vorhandenen Gruppen.
-- Im Modulmenü lassen sich Gruppen einzeln ein-/ausblenden und das Wechselintervall 2–60 s einstellen.
-- Zeigt Restzeit, Profil, Zusatz-Tickets und optional Online-Geräte.
-- Reine Anzeige ohne PIN und ohne Schaltbefehle; die geschützte Hauptkachel bleibt unverändert.
-- Automatische Größenanpassung anhand der tatsächlich verfügbaren Kachelbreite/-höhe (ResizeObserver), nicht anhand einer fest angenommenen Tablet-Zollgröße.
-
-
-BUILD9
-- Fehler „Variable is marked as read-only ... PublicStatus“ behoben.
-  Der Status für „Onlinezeit Kinder“ wird jetzt nur noch über den Modul-Buffer und FKS_GetPublicStatus bereitgestellt.
-- Auswahl in „Onlinezeit Kinder > Im Wechsel anzeigen“ bleibt jetzt dauerhaft gespeichert.
-  Ursache: Der nicht editierbare Gruppenname wurde bisher nicht als Listeneigenschaft gespeichert; dadurch ging die Zuordnung nach „Übernehmen“ verloren.
-- Die Spalten „Anzeigen“ und „Person / Gruppe“ werden jetzt beide persistent gespeichert.
-- Bestehende BUILD8-Einstellungen, Geräte und Hauptinstanz bleiben erhalten.
-
-BUILD10
-- Neue separate Instanz/Kachel „FRITZ!Box Elternansicht“.
-- Nutzt dieselbe PIN wie die Hauptinstanz, ohne PIN oder FRITZ!Box-Zugangsdaten zu duplizieren.
-- Vollständige Geräte-, Gruppen-, Profil-, Ticket- und +45-min-Steuerung in einer eigenen responsiven Kachel.
-- Kein Abhängigkeitsproblem mehr vom leeren Symcon-↗-Vollbild.
+Hintergrund:
+Der installierte Symcon-9.0-Kernel vom 15.06.2026 unterstützt die HTML-SDK-Vollbilddarstellung
+noch nicht nativ. BUILD11 nutzt deshalb bewusst nicht SetVisualizationType(2).

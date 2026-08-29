@@ -105,6 +105,10 @@ body.compact #compactView { display:block; }
 body.compact #fullView { display:none; }
 body.compact .hint { display:block; }
 body.compact #msg { display:none; }
+body.browserFullscreen #app { padding:10px; }
+body.browserFullscreen .hint { display:none !important; }
+#exitFsBtn { display:none; }
+body.browserFullscreen #exitFsBtn { display:inline-block; }
 body.compact .top { min-height:32px; justify-content:flex-end; }
 body.compact .top .grow { display:none; }
 body.compact .top button { min-height:32px; min-width:32px; padding:3px 6px; }
@@ -136,10 +140,11 @@ body.compact .badge { font-size:9px; padding:3px 5px; }
       <div class="grow"></div>
       <span id="mode" class="badge"></span>
       <button type="button" id="refreshBtn" title="Aktualisieren">↻</button>
+      <button type="button" id="exitFsBtn" title="Vollansicht schließen">↙</button>
       <button type="button" id="lockBtn" title="Sperren">🔒</button>
     </div>
     <div id="msg"></div>
-    <div class="hint">Für die vollständige Steuerung die separate Kachel „Elternansicht“ öffnen.</div>
+    <div id="compactHint" class="hint">Nach korrekter PIN wird automatisch die Vollansicht geöffnet.</div>
 
     <div id="compactView">
       <div id="compactGroups" class="compactGrid"></div>
@@ -158,6 +163,8 @@ let unlocked=false;
 let expiresAt=0;
 let lockTimer=null;
 let lastData=null;
+let fullscreenRequestedForPin=false;
+let fullscreenFailed=false;
 const clientId=getClientId();
 
 function getClientId(){
@@ -173,8 +180,35 @@ function send(op,extra={}){ requestAction('command',JSON.stringify(Object.assign
 function digit(d){ if(pin.length<8) pin+=d; paintDots(); }
 function clearPin(){ pin=pin.slice(0,-1); paintDots(); }
 function paintDots(){ document.getElementById('dots').textContent=pin.length?'•'.repeat(pin.length):'••••'; }
+function fullscreenElement(){ return document.fullscreenElement || document.webkitFullscreenElement || null; }
+function requestBrowserFullscreen(){
+  fullscreenRequestedForPin=true;
+  fullscreenFailed=false;
+  const el=document.documentElement;
+  try{
+    let p=null;
+    if(el.requestFullscreen) p=el.requestFullscreen({navigationUI:'hide'});
+    else if(el.webkitRequestFullscreen) p=el.webkitRequestFullscreen();
+    else { fullscreenFailed=true; return; }
+    if(p&&typeof p.catch==='function') p.catch(()=>{ fullscreenFailed=true; updateFullscreenState(); });
+  }catch(e){ fullscreenFailed=true; }
+}
+function exitBrowserFullscreen(){
+  try{
+    if(document.fullscreenElement&&document.exitFullscreen) return document.exitFullscreen();
+    if(document.webkitFullscreenElement&&document.webkitExitFullscreen) return document.webkitExitFullscreen();
+  }catch(e){}
+}
+function updateFullscreenState(){
+  const active=!!fullscreenElement();
+  document.body.classList.toggle('browserFullscreen',active);
+  updateLayout();
+}
 function submitPin(){
   if(pin.length<4){ document.getElementById('lockmsg').textContent='Mindestens 4 Ziffern.'; return; }
+  // BUILD11: Browser-Vollbild wird direkt im OK-Klick angefordert. Nur hier besteht
+  // die vom Browser geforderte Benutzeraktivierung. Bei falscher PIN wird es sofort wieder beendet.
+  requestBrowserFullscreen();
   send('unlock',{pin}); pin=''; paintDots();
 }
 function setLocked(message=''){
@@ -183,6 +217,8 @@ function setLocked(message=''){
   document.getElementById('unlocked').style.display='none';
   document.getElementById('lockmsg').textContent=message;
   if(lockTimer) clearInterval(lockTimer);
+  if(fullscreenRequestedForPin&&fullscreenElement()) exitBrowserFullscreen();
+  fullscreenRequestedForPin=false;
 }
 function setUnlocked(data){
   unlocked=true; expiresAt=(data.expires||0)*1000;
@@ -190,7 +226,12 @@ function setUnlocked(data){
   document.getElementById('unlocked').style.display='flex';
   if(lockTimer) clearInterval(lockTimer);
   lockTimer=setInterval(()=>{ if(expiresAt&&Date.now()>expiresAt) setLocked('Automatisch gesperrt.'); },1000);
-  updateLayout();
+  if(fullscreenFailed&&!fullscreenElement()){
+    const h=document.getElementById('compactHint');
+    if(h) h.textContent='Vollansicht wurde vom Browser/App nicht erlaubt. Die Steuerung bleibt in der Kachel.';
+  }
+  fullscreenRequestedForPin=false;
+  updateFullscreenState();
 }
 function updateLayout(){
   const compact=window.innerWidth<560 || window.innerHeight<470;
@@ -371,10 +412,13 @@ document.querySelectorAll('[data-digit]').forEach(b=>b.addEventListener('click',
 document.getElementById('backspace').addEventListener('click',clearPin);
 document.getElementById('pinOk').addEventListener('click',submitPin);
 document.getElementById('refreshBtn').addEventListener('click',refresh);
+document.getElementById('exitFsBtn').addEventListener('click',exitBrowserFullscreen);
 document.getElementById('lockBtn').addEventListener('click',lockNow);
+document.addEventListener('fullscreenchange',updateFullscreenState);
+document.addEventListener('webkitfullscreenchange',updateFullscreenState);
 window.addEventListener('resize',updateLayout);
 if(window.ResizeObserver){ new ResizeObserver(updateLayout).observe(document.getElementById('app')); }
-updateLayout();
+updateFullscreenState();
 setTimeout(()=>send('hello'),100);
 </script>
 </body>
