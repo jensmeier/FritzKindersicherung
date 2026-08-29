@@ -610,9 +610,9 @@ class FritzKindersicherung extends IPSModuleStrict
 
         try {
             $service = $this->DiscoverHostFilterService(false);
-            // BUILD17: Vorher/Nachher prüfen. Auf Profilen mit gemeinsamem Budget kann die
-            // FRITZ!Box die Zusatzzeit auf mehrere Geräte spiegeln. So melden wir das ehrlich,
-            // statt nur den angeklickten Gerätenamen zu behaupten.
+            // BUILD18: Zusatzzeit ist gerätebezogen. Das gemeinsame Profilbudget betrifft
+            // das Basisbudget; AddTicketTimeToHostEntryByIP adressiert gezielt die angegebene IP.
+            // Vorher/Nachher bleibt als Diagnose erhalten.
             $before = $this->ReadConfiguredTicketStates($service);
             $result = $this->SoapAction($service, 'AddTicketTimeToHostEntryByIP', [
                 'NewIPv4Address' => $ip
@@ -635,11 +635,9 @@ class FritzKindersicherung extends IPSModuleStrict
                 }
             }
 
+            $msg = '+45 Minuten Zusatzzeit für „' . $targetName . '“ vergeben.';
             if (count($changed) > 1) {
-                $msg = '+45 Minuten angefordert für „' . $targetName . '“. Die FRITZ!Box hat die Zusatzzeit bei '
-                    . count($changed) . ' Geräten gespiegelt (gemeinsames Budget): ' . implode(', ', $changed) . '.';
-            } else {
-                $msg = '+45 Minuten für „' . $targetName . '“ vergeben.';
+                $msg .= ' Diagnose: Bei der Kontrolle änderten sich zusätzlich Werte bei ' . implode(', ', $changed) . '.';
             }
             if ($ticketValid > 0 || $tickets > 0) {
                 $msg .= ' Aktive Zusatzzeit: ' . $ticketValid . ' min';
