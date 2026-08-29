@@ -27,7 +27,13 @@ button:disabled { opacity:.4; cursor:not-allowed; }
 .badge.warn { background:#b66c00; color:white; }
 .groups { min-height:0; overflow:auto; display:flex; flex-direction:column; gap:8px; }
 .groupHead { display:flex; gap:6px; align-items:center; margin-bottom:7px; }
-.groupHead strong { flex:1; }
+.groupHead strong { flex:1; min-width:90px; }
+.profileSelect { max-width:210px; min-width:145px; border:1px solid rgba(127,127,127,.28); border-radius:8px; padding:6px 8px; font-size:12px; background:rgba(127,127,127,.10); color:inherit; }
+.profileSelect:disabled { opacity:.58; }
+.groupProfile { max-width:190px; }
+.metaLine { display:flex; align-items:center; flex-wrap:wrap; gap:5px; margin-top:2px; }
+.ipmeta { font-size:11px; opacity:.72; }
+.timeinfo { font-size:11px; opacity:.72; white-space:nowrap; }
 .device { display:grid; grid-template-columns:minmax(120px,1.4fr) minmax(105px,.9fr) auto; align-items:center; gap:8px; padding:7px 0; border-top:1px solid rgba(127,127,127,.15); }
 .device:first-of-type { border-top:0; }
 .devname { font-weight:650; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -51,8 +57,8 @@ button:disabled { opacity:.4; cursor:not-allowed; }
 <div id="app">
   <div id="locked" class="center">
     <div class="lock">🔒</div>
-    <div class="title">Kindersicherung</div>
-    <div class="sub">PIN eingeben – Steuerung bleibt serverseitig gesperrt.</div>
+    <div class="title">PIN eingeben</div>
+    <div class="sub">Die FRITZ!Box-Steuerung ist geschützt.</div>
     <div id="dots" class="dots">••••</div>
     <div class="keypad">
       <button onclick="digit('1')">1</button><button onclick="digit('2')">2</button><button onclick="digit('3')">3</button>
@@ -64,7 +70,6 @@ button:disabled { opacity:.4; cursor:not-allowed; }
   </div>
   <div id="unlocked" style="display:none;height:100%;min-height:0;flex-direction:column;gap:8px">
     <div class="top">
-      <div class="title">🔐 FRITZ!Box Kindersicherung</div>
       <div class="grow"></div>
       <span id="mode" class="badge"></span>
       <button onclick="refresh()">↻</button>
@@ -119,6 +124,19 @@ function lockNow() { send('lock'); setLocked('Gesperrt.'); }
 function refresh() { if (unlocked) send('refresh'); }
 function act(ip, disallow) { if (unlocked) send('set_disallow',{ip,disallow}); }
 function groupAct(group, disallow) { if (unlocked) send('group_disallow',{group,disallow}); }
+function setProfile(ip, profileId) { if (unlocked && profileId) send('set_profile',{ip,profileId}); }
+function setGroupProfile(group, profileId) { if (unlocked && profileId) send('group_profile',{group,profileId}); }
+function makeProfileSelect(profiles, currentId, onChange, placeholder, disabled=false, extraClass='') {
+  const sel=document.createElement('select');
+  sel.className='profileSelect'+(extraClass?' '+extraClass:'');
+  sel.disabled=disabled;
+  const ph=document.createElement('option'); ph.value=''; ph.textContent=placeholder; sel.appendChild(ph);
+  (profiles||[]).forEach(p=>{
+    const o=document.createElement('option'); o.value=p.id; o.textContent=p.name; if (p.id===currentId) o.selected=true; sel.appendChild(o);
+  });
+  sel.onchange=()=>{ const v=sel.value; if(v) onChange(v); };
+  return sel;
+}
 function esc(v){ return String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c])); }
 function fmt(sec){ sec=Number(sec)||0; const h=Math.floor(sec/3600), m=Math.floor((sec%3600)/60); return h ? `${h} h ${m} min` : `${m} min`; }
 function render(data){
@@ -127,16 +145,24 @@ function render(data){
   mode.textContent=data.readOnly?'TEST · nur lesen':'STEUERUNG AKTIV';
   mode.className='badge'+(data.readOnly?' warn':'');
   document.getElementById('msg').textContent=data.message||'';
+  const profiles=data.profiles||[];
   const by={};
   (data.devices||[]).forEach(d=>{ const g=d.group||'Geräte'; (by[g]??=[]).push(d); });
   const root=document.getElementById('groups'); root.innerHTML='';
   Object.entries(by).forEach(([g,devs])=>{
     const c=document.createElement('div'); c.className='card';
     const h=document.createElement('div'); h.className='groupHead';
-    h.innerHTML=`<strong>${esc(g)}</strong>`;
+    const groupName=document.createElement('strong'); groupName.textContent=g; h.appendChild(groupName);
+
+    if (profiles.length) {
+      const gps=makeProfileSelect(profiles,'',v=>setGroupProfile(g,v),'Profil für alle …',data.readOnly,'groupProfile');
+      h.appendChild(gps);
+    }
+
     const b1=document.createElement('button'); b1.className='danger'; b1.textContent='Alle sperren'; b1.disabled=data.readOnly; b1.onclick=()=>groupAct(g,true);
     const b2=document.createElement('button'); b2.className='ok'; b2.textContent='Alle freigeben'; b2.disabled=data.readOnly; b2.onclick=()=>groupAct(g,false);
     h.appendChild(b1); h.appendChild(b2); c.appendChild(h);
+
     devs.forEach(d=>{
       const row=document.createElement('div'); row.className='device';
       const status=d.error?'err':(d.wan==='granted'?'on':(d.wan==='denied'?'off':'err'));
@@ -144,9 +170,25 @@ function render(data){
       let time='';
       if (Number(d.timeMax)>0) {
         const rest=Math.max(0,Number(d.timeMax)-Number(d.timeUsed));
-        time=` · ${fmt(rest)} Rest`;
+        time=`${fmt(rest)} Rest`;
       }
-      row.innerHTML=`<div><div class="devname">${esc(d.name)}</div><div class="meta">${esc(d.ip)} · Profil ${esc(d.profile||'—')}${esc(time)}</div></div><div class="state"><span class="dot ${status}"></span>${esc(statusText)}</div>`;
+
+      const info=document.createElement('div');
+      const name=document.createElement('div'); name.className='devname'; name.textContent=d.name||'Gerät'; info.appendChild(name);
+      const meta=document.createElement('div'); meta.className='metaLine';
+      const ip=document.createElement('span'); ip.className='ipmeta'; ip.textContent=d.ip||''; meta.appendChild(ip);
+      if (profiles.length) {
+        const ps=makeProfileSelect(profiles,d.profileId||'',v=>setProfile(d.ip,v),d.profile||'Profil wählen',data.readOnly);
+        meta.appendChild(ps);
+      } else {
+        const p=document.createElement('span'); p.className='ipmeta'; p.textContent='· Profil '+(d.profile||'—'); meta.appendChild(p);
+      }
+      if (time) { const t=document.createElement('span'); t.className='timeinfo'; t.textContent='· '+time; meta.appendChild(t); }
+      info.appendChild(meta);
+
+      const state=document.createElement('div'); state.className='state'; state.innerHTML=`<span class="dot ${status}"></span>${esc(statusText)}`;
+      row.appendChild(info); row.appendChild(state);
+
       const a=document.createElement('div'); a.className='actions';
       const s=document.createElement('button'); s.className='danger'; s.textContent='Sperren'; s.disabled=data.readOnly; s.onclick=()=>act(d.ip,true);
       const f=document.createElement('button'); f.className='ok'; f.textContent='Freigeben'; f.disabled=data.readOnly; f.onclick=()=>act(d.ip,false);

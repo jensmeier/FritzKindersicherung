@@ -110,10 +110,24 @@ class FritzKindersicherung extends IPSModuleStrict
             return;
         }
 
+        if ($op === 'set_profile') {
+            $ip = (string) ($cmd['ip'] ?? '');
+            $profileId = (string) ($cmd['profileId'] ?? '');
+            $this->HandleSetProfile($clientId, $ip, $profileId);
+            return;
+        }
+
         if ($op === 'group_disallow') {
             $group = (string) ($cmd['group'] ?? '');
             $disallow = (bool) ($cmd['disallow'] ?? false);
             $this->HandleGroupDisallow($clientId, $group, $disallow);
+            return;
+        }
+
+        if ($op === 'group_profile') {
+            $group = (string) ($cmd['group'] ?? '');
+            $profileId = (string) ($cmd['profileId'] ?? '');
+            $this->HandleGroupProfile($clientId, $group, $profileId);
         }
     }
 
@@ -363,6 +377,83 @@ class FritzKindersicherung extends IPSModuleStrict
         $this->SendStatusToClient($clientId, $msg);
     }
 
+    private function HandleSetProfile(string $clientId, string $ip, string $profileId): void
+    {
+        if ($this->ReadPropertyBoolean('ReadOnly')) {
+            $this->SendStatusToClient($clientId, 'TESTMODUS: Profil wurde nicht geändert.');
+            return;
+        }
+        if (!$this->IsConfiguredIP($ip)) {
+            $this->SendStatusToClient($clientId, 'Abgelehnt: IP ist nicht in der Modulkonfiguration freigegeben.');
+            return;
+        }
+
+        try {
+            $profiles = $this->GetFilterProfileNames(false);
+            if ($profileId === '' || !array_key_exists($profileId, $profiles)) {
+                $this->SendStatusToClient($clientId, 'Abgelehnt: Unbekanntes FRITZ!-Zugangsprofil.');
+                return;
+            }
+            $service = $this->DiscoverHostFilterService(false);
+            $this->SoapAction($service, 'AddHostEntryToFilterProfile', [
+                'NewIPv4Address' => $ip,
+                'NewFilterProfileID' => $profileId
+            ]);
+            $this->SetBuffer('HostInventoryTs', '0');
+            $this->SendStatusToClient($clientId, 'Profil geändert auf „' . $profiles[$profileId] . '“.');
+        } catch (Throwable $e) {
+            $this->SendStatusToClient($clientId, 'FRITZ!Box Fehler beim Profilwechsel: ' . $e->getMessage());
+        }
+    }
+
+    private function HandleGroupProfile(string $clientId, string $group, string $profileId): void
+    {
+        if ($this->ReadPropertyBoolean('ReadOnly')) {
+            $this->SendStatusToClient($clientId, 'TESTMODUS: Gruppenprofil wurde nicht geändert.');
+            return;
+        }
+
+        $targets = array_values(array_filter(
+            $this->GetResolvedConfiguredDevices(),
+            static fn(array $d): bool => $d['group'] === $group && $d['ip'] !== ''
+        ));
+        if ($targets === []) {
+            $this->SendStatusToClient($clientId, 'Keine Geräte in dieser Gruppe gefunden.');
+            return;
+        }
+
+        try {
+            $profiles = $this->GetFilterProfileNames(false);
+            if ($profileId === '' || !array_key_exists($profileId, $profiles)) {
+                $this->SendStatusToClient($clientId, 'Abgelehnt: Unbekanntes FRITZ!-Zugangsprofil.');
+                return;
+            }
+
+            $service = $this->DiscoverHostFilterService(false);
+            $ok = 0;
+            $errors = [];
+            foreach ($targets as $device) {
+                try {
+                    $this->SoapAction($service, 'AddHostEntryToFilterProfile', [
+                        'NewIPv4Address' => $device['ip'],
+                        'NewFilterProfileID' => $profileId
+                    ]);
+                    $ok++;
+                } catch (Throwable $e) {
+                    $errors[] = $device['name'];
+                }
+            }
+            $this->SetBuffer('HostInventoryTs', '0');
+            $msg = 'Profil „' . $profiles[$profileId] . '“: ' . $ok . '/' . count($targets) . ' Geräte geändert.';
+            if ($errors !== []) {
+                $msg .= ' Fehler: ' . implode(', ', $errors);
+            }
+            $this->SendStatusToClient($clientId, $msg);
+        } catch (Throwable $e) {
+            $this->SendStatusToClient($clientId, 'FRITZ!Box Fehler beim Gruppenprofil: ' . $e->getMessage());
+        }
+    }
+
     private function SendStatusToClient(string $clientId, string $message): void
     {
         $expires = $this->GetAuthorizationExpiry($clientId);
@@ -405,6 +496,7 @@ class FritzKindersicherung extends IPSModuleStrict
                     'wan' => 'error',
                     'disallow' => null,
                     'profile' => '',
+                    'profileId' => '',
                     'timeUsed' => 0,
                     'timeMax' => 0,
                     'error' => ''
@@ -415,6 +507,7 @@ class FritzKindersicherung extends IPSModuleStrict
                     $entry = $this->SoapAction($service, 'GetHostEntryByIP', ['NewIPv4Address' => $device['ip']]);
                     $row['wan'] = (string) ($entry['NewWANAccess'] ?? 'error');
                     $profileId = (string) ($entry['NewFilterProfileID'] ?? '');
+                    $row['profileId'] = $profileId;
                     $row['profile'] = (string) ($profileNames[$profileId] ?? $profileId);
                     $row['timeUsed'] = (int) ($entry['NewTimeUsed'] ?? 0);
                     $row['timeMax'] = (int) ($entry['NewTimeMax'] ?? 0);
@@ -440,9 +533,16 @@ class FritzKindersicherung extends IPSModuleStrict
             }
         }
 
+        $profileList = [];
+        foreach ($profileNames as $id => $name) {
+            $profileList[] = ['id' => (string) $id, 'name' => (string) $name];
+        }
+        usort($profileList, static fn(array $a, array $b): int => strnatcasecmp($a['name'], $b['name']));
+
         $payload = [
             'readOnly' => $this->ReadPropertyBoolean('ReadOnly'),
             'devices' => $result,
+            'profiles' => $profileList,
             'message' => $message
         ];
         $this->SetBuffer('LastPayload', json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));

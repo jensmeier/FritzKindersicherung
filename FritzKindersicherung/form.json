@@ -84,35 +84,45 @@
           "name": "Enabled",
           "width": "60px",
           "add": false,
-          "edit": { "type": "CheckBox" }
+          "edit": {
+            "type": "CheckBox"
+          }
         },
         {
           "caption": "Person/Gruppe",
           "name": "Group",
           "width": "120px",
           "add": "",
-          "edit": { "type": "ValidationTextBox" }
+          "edit": {
+            "type": "ValidationTextBox"
+          }
         },
         {
           "caption": "Gerätename",
           "name": "Name",
           "width": "220px",
           "add": "",
-          "edit": { "type": "ValidationTextBox" }
+          "edit": {
+            "type": "ValidationTextBox"
+          }
         },
         {
           "caption": "IPv4-Adresse",
           "name": "IP",
           "width": "130px",
           "add": "",
-          "edit": { "type": "ValidationTextBox" }
+          "edit": {
+            "type": "ValidationTextBox"
+          }
         },
         {
           "caption": "MAC-Adresse",
           "name": "MAC",
           "width": "145px",
           "add": "",
-          "edit": { "type": "ValidationTextBox" }
+          "edit": {
+            "type": "ValidationTextBox"
+          }
         },
         {
           "caption": "Status",
@@ -139,7 +149,7 @@
   "actions": [
     {
       "type": "Label",
-      "caption": "BUILD3: Automatischer Geräteimport über den offiziellen TR-064 Hosts-Dienst. Der Testmodus bleibt für die Inbetriebnahme empfohlen."
+      "caption": "BUILD4: Doppelte Überschrift entfernt. FRITZ!-Zugangsprofile können direkt pro Gerät oder für eine ganze Gruppe gewählt werden. Im Testmodus bleiben alle Schalt- und Profilaktionen deaktiviert."
     },
     {
       "type": "Button",
