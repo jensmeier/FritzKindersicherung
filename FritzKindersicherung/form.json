@@ -1,0 +1,130 @@
+{
+  "elements": [
+    {
+      "type": "ExpansionPanel",
+      "caption": "FRITZ!Box Verbindung",
+      "expanded": true,
+      "items": [
+        {
+          "type": "ValidationTextBox",
+          "name": "Host",
+          "caption": "FRITZ!Box Host/IP"
+        },
+        {
+          "type": "ValidationTextBox",
+          "name": "User",
+          "caption": "FRITZ!Box Benutzer"
+        },
+        {
+          "type": "PasswordTextBox",
+          "name": "Password",
+          "caption": "FRITZ!Box Kennwort"
+        },
+        {
+          "type": "CheckBox",
+          "name": "PreferHTTPS",
+          "caption": "TR-064 bevorzugt per HTTPS (Port 49443)"
+        }
+      ]
+    },
+    {
+      "type": "ExpansionPanel",
+      "caption": "PIN-Schutz der Kachel",
+      "expanded": true,
+      "items": [
+        {
+          "type": "PasswordTextBox",
+          "name": "TilePin",
+          "caption": "PIN (4 bis 8 Ziffern)"
+        },
+        {
+          "type": "NumberSpinner",
+          "name": "UnlockSeconds",
+          "caption": "Automatisch wieder sperren nach",
+          "suffix": " Sekunden",
+          "minimum": 30,
+          "maximum": 1800
+        }
+      ]
+    },
+    {
+      "type": "ExpansionPanel",
+      "caption": "Sicherheit und Aktualisierung",
+      "expanded": true,
+      "items": [
+        {
+          "type": "CheckBox",
+          "name": "ReadOnly",
+          "caption": "Testmodus: nur lesen, keine FRITZ!Box ändern"
+        },
+        {
+          "type": "NumberSpinner",
+          "name": "RefreshSeconds",
+          "caption": "Status aktualisieren alle",
+          "suffix": " Sekunden",
+          "minimum": 15,
+          "maximum": 3600
+        }
+      ]
+    },
+    {
+      "type": "List",
+      "name": "Devices",
+      "caption": "Geräte (am besten in der FRITZ!Box feste IPv4-Adresse vergeben)",
+      "rowCount": 8,
+      "add": true,
+      "delete": true,
+      "columns": [
+        {
+          "caption": "Aktiv",
+          "name": "Enabled",
+          "width": "60px",
+          "add": true,
+          "edit": { "type": "CheckBox" }
+        },
+        {
+          "caption": "Person/Gruppe",
+          "name": "Group",
+          "width": "130px",
+          "add": "Paul",
+          "edit": { "type": "ValidationTextBox" }
+        },
+        {
+          "caption": "Gerätename",
+          "name": "Name",
+          "width": "auto",
+          "add": "",
+          "edit": { "type": "ValidationTextBox" }
+        },
+        {
+          "caption": "IPv4-Adresse",
+          "name": "IP",
+          "width": "140px",
+          "add": "",
+          "edit": { "type": "ValidationTextBox" }
+        }
+      ],
+      "values": [
+        { "Enabled": true, "Group": "Paul", "Name": "Pauls Handy", "IP": "" },
+        { "Enabled": true, "Group": "Paul", "Name": "Paul Gaming-PC", "IP": "" },
+        { "Enabled": true, "Group": "Tom", "Name": "Toms Gerät", "IP": "" }
+      ]
+    }
+  ],
+  "actions": [
+    {
+      "type": "Label",
+      "caption": "BUILD1 startet absichtlich im Testmodus. Erst wenn Lesen und PIN funktionieren, Testmodus deaktivieren."
+    },
+    {
+      "type": "Button",
+      "caption": "Verbindung / TR-064 testen",
+      "onClick": "echo FKS_TestConnection($id);"
+    },
+    {
+      "type": "Button",
+      "caption": "Gerätestatus jetzt lesen",
+      "onClick": "FKS_Refresh($id); echo 'Aktualisierung ausgelöst';"
+    }
+  ]
+}

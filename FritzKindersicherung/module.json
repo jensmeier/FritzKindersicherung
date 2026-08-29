@@ -1,0 +1,13 @@
+{
+  "id": "{8FD44702-1516-4F0D-A8A2-50F8840D6946}",
+  "name": "FritzKindersicherung",
+  "type": 3,
+  "vendor": "FRITZ! / JZCG",
+  "aliases": [
+    "FRITZ!Box Kindersicherung"
+  ],
+  "parentRequirements": [],
+  "childRequirements": [],
+  "implemented": [],
+  "prefix": "FKS"
+}

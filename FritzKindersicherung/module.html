@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<style>
+:root { color-scheme: light dark; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
+* { box-sizing: border-box; }
+html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: transparent; }
+#app { height: 100%; padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+.card { background: rgba(127,127,127,.10); border: 1px solid rgba(127,127,127,.22); border-radius: 14px; padding: 10px; }
+.center { display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; gap:10px; }
+.lock { font-size: 42px; line-height:1; }
+.title { font-size: 18px; font-weight: 750; }
+.sub { font-size: 12px; opacity:.72; text-align:center; }
+.dots { height:24px; font-size:24px; letter-spacing:7px; }
+.keypad { display:grid; grid-template-columns:repeat(3,64px); gap:8px; }
+button { border:0; border-radius:10px; padding:10px 12px; font-size:14px; cursor:pointer; background:rgba(127,127,127,.18); color:inherit; }
+.keypad button { width:64px; height:46px; font-size:18px; }
+button.primary { background:#1473e6; color:white; }
+button.danger { background:#c73535; color:white; }
+button.ok { background:#238b57; color:white; }
+button:disabled { opacity:.4; cursor:not-allowed; }
+.top { display:flex; align-items:center; gap:8px; }
+.top .grow { flex:1; }
+.badge { font-size:11px; padding:4px 7px; border-radius:999px; background:rgba(127,127,127,.18); }
+.badge.warn { background:#b66c00; color:white; }
+.groups { min-height:0; overflow:auto; display:flex; flex-direction:column; gap:8px; }
+.groupHead { display:flex; gap:6px; align-items:center; margin-bottom:7px; }
+.groupHead strong { flex:1; }
+.device { display:grid; grid-template-columns:minmax(120px,1.4fr) minmax(105px,.9fr) auto; align-items:center; gap:8px; padding:7px 0; border-top:1px solid rgba(127,127,127,.15); }
+.device:first-of-type { border-top:0; }
+.devname { font-weight:650; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.meta { font-size:11px; opacity:.72; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.state { font-size:12px; }
+.dot { display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:5px; background:#8b8b8b; }
+.dot.on { background:#2aa666; } .dot.off { background:#d64b4b; } .dot.err { background:#d89422; }
+.actions { display:flex; gap:5px; }
+.actions button { padding:7px 9px; font-size:12px; }
+#msg { min-height:18px; font-size:12px; opacity:.85; text-align:center; }
+@media (max-width:650px) {
+  #app { padding:7px; }
+  .device { grid-template-columns:1fr auto; }
+  .device .state { grid-column:1/2; }
+  .actions { grid-column:2/3; grid-row:1/3; flex-direction:column; }
+  .groupHead button { padding:7px; font-size:11px; }
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="locked" class="center">
+    <div class="lock">🔒</div>
+    <div class="title">Kindersicherung</div>
+    <div class="sub">PIN eingeben – Steuerung bleibt serverseitig gesperrt.</div>
+    <div id="dots" class="dots">••••</div>
+    <div class="keypad">
+      <button onclick="digit('1')">1</button><button onclick="digit('2')">2</button><button onclick="digit('3')">3</button>
+      <button onclick="digit('4')">4</button><button onclick="digit('5')">5</button><button onclick="digit('6')">6</button>
+      <button onclick="digit('7')">7</button><button onclick="digit('8')">8</button><button onclick="digit('9')">9</button>
+      <button onclick="clearPin()">⌫</button><button onclick="digit('0')">0</button><button class="primary" onclick="submitPin()">OK</button>
+    </div>
+    <div id="lockmsg" class="sub"></div>
+  </div>
+  <div id="unlocked" style="display:none;height:100%;min-height:0;flex-direction:column;gap:8px">
+    <div class="top">
+      <div class="title">🔐 FRITZ!Box Kindersicherung</div>
+      <div class="grow"></div>
+      <span id="mode" class="badge"></span>
+      <button onclick="refresh()">↻</button>
+      <button onclick="lockNow()">🔒</button>
+    </div>
+    <div id="msg"></div>
+    <div id="groups" class="groups"></div>
+  </div>
+</div>
+<script>
+let pin = '';
+let unlocked = false;
+let expiresAt = 0;
+const clientId = getClientId();
+let lockTimer = null;
+
+function getClientId() {
+  let id = sessionStorage.getItem('fksClientId');
+  if (!id) {
+    if (window.crypto && crypto.randomUUID) id = crypto.randomUUID();
+    else id = Date.now().toString(36) + Math.random().toString(36).slice(2);
+    sessionStorage.setItem('fksClientId', id);
+  }
+  return id;
+}
+function send(op, extra={}) {
+  requestAction('command', JSON.stringify(Object.assign({op, clientId}, extra)));
+}
+function digit(d) { if (pin.length < 8) pin += d; paintDots(); }
+function clearPin() { pin = pin.slice(0,-1); paintDots(); }
+function paintDots() { document.getElementById('dots').textContent = pin.length ? '•'.repeat(pin.length) : '••••'; }
+function submitPin() {
+  if (pin.length < 4) { document.getElementById('lockmsg').textContent='Mindestens 4 Ziffern.'; return; }
+  send('unlock',{pin}); pin=''; paintDots();
+}
+function setLocked(message='') {
+  unlocked=false; expiresAt=0;
+  document.getElementById('locked').style.display='flex';
+  document.getElementById('unlocked').style.display='none';
+  document.getElementById('lockmsg').textContent=message;
+  if (lockTimer) clearInterval(lockTimer);
+}
+function setUnlocked(data) {
+  unlocked=true;
+  expiresAt=(data.expires || 0)*1000;
+  document.getElementById('locked').style.display='none';
+  document.getElementById('unlocked').style.display='flex';
+  if (lockTimer) clearInterval(lockTimer);
+  lockTimer=setInterval(()=>{ if (expiresAt && Date.now()>expiresAt) setLocked('Automatisch gesperrt.'); },1000);
+}
+function lockNow() { send('lock'); setLocked('Gesperrt.'); }
+function refresh() { if (unlocked) send('refresh'); }
+function act(ip, disallow) { if (unlocked) send('set_disallow',{ip,disallow}); }
+function groupAct(group, disallow) { if (unlocked) send('group_disallow',{group,disallow}); }
+function esc(v){ return String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c])); }
+function fmt(sec){ sec=Number(sec)||0; const h=Math.floor(sec/3600), m=Math.floor((sec%3600)/60); return h ? `${h} h ${m} min` : `${m} min`; }
+function render(data){
+  if (!unlocked) return;
+  const mode=document.getElementById('mode');
+  mode.textContent=data.readOnly?'TEST · nur lesen':'STEUERUNG AKTIV';
+  mode.className='badge'+(data.readOnly?' warn':'');
+  document.getElementById('msg').textContent=data.message||'';
+  const by={};
+  (data.devices||[]).forEach(d=>{ const g=d.group||'Geräte'; (by[g]??=[]).push(d); });
+  const root=document.getElementById('groups'); root.innerHTML='';
+  Object.entries(by).forEach(([g,devs])=>{
+    const c=document.createElement('div'); c.className='card';
+    const h=document.createElement('div'); h.className='groupHead';
+    h.innerHTML=`<strong>${esc(g)}</strong>`;
+    const b1=document.createElement('button'); b1.className='danger'; b1.textContent='Alle sperren'; b1.disabled=data.readOnly; b1.onclick=()=>groupAct(g,true);
+    const b2=document.createElement('button'); b2.className='ok'; b2.textContent='Alle freigeben'; b2.disabled=data.readOnly; b2.onclick=()=>groupAct(g,false);
+    h.appendChild(b1); h.appendChild(b2); c.appendChild(h);
+    devs.forEach(d=>{
+      const row=document.createElement('div'); row.className='device';
+      const status=d.error?'err':(d.wan==='granted'?'on':(d.wan==='denied'?'off':'err'));
+      const statusText=d.error?'Fehler':(d.wan==='granted'?'Internet erlaubt':(d.wan==='denied'?'Internet gesperrt':'Status unbekannt'));
+      let time='';
+      if (Number(d.timeMax)>0) {
+        const rest=Math.max(0,Number(d.timeMax)-Number(d.timeUsed));
+        time=` · ${fmt(rest)} Rest`;
+      }
+      row.innerHTML=`<div><div class="devname">${esc(d.name)}</div><div class="meta">${esc(d.ip)} · Profil ${esc(d.profile||'—')}${esc(time)}</div></div><div class="state"><span class="dot ${status}"></span>${esc(statusText)}</div>`;
+      const a=document.createElement('div'); a.className='actions';
+      const s=document.createElement('button'); s.className='danger'; s.textContent='Sperren'; s.disabled=data.readOnly; s.onclick=()=>act(d.ip,true);
+      const f=document.createElement('button'); f.className='ok'; f.textContent='Freigeben'; f.disabled=data.readOnly; f.onclick=()=>act(d.ip,false);
+      a.appendChild(s); a.appendChild(f); row.appendChild(a); c.appendChild(row);
+    });
+    root.appendChild(c);
+  });
+  if (!Object.keys(by).length) root.innerHTML='<div class="card sub">Noch keine Geräte mit IPv4-Adresse konfiguriert.</div>';
+}
+function handleMessage(data) {
+  if (typeof data === 'string') { try { data=JSON.parse(data); } catch(e){ return; } }
+  if (!data || (data.target && data.target!=='*' && data.target!==clientId)) return;
+  if (data.kind==='auth') {
+    if (data.ok) { setUnlocked(data); if (data.payload) render(data.payload); }
+    else setLocked(data.message||'PIN falsch.');
+  } else if (data.kind==='status') {
+    if (unlocked) { if(data.expires) expiresAt=data.expires*1000; render(data.payload||{}); }
+  } else if (data.kind==='locked') setLocked(data.message||'Gesperrt.');
+}
+setTimeout(()=>send('hello'),100);
+</script>
+</body>
+</html>
