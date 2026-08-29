@@ -111,7 +111,11 @@ class FritzKindersicherung extends IPSModuleStrict
 
         switch ($op) {
             case 'hello':
-                if ($this->IsAuthorized($clientId)) {
+                $handoffToken = strtolower(trim((string) ($cmd['handoffToken'] ?? '')));
+                $parentVisualizationId = (int) ($cmd['parentVisualizationId'] ?? 0);
+                if ($handoffToken !== '' && $this->ConsumeParentHandoff($handoffToken, $clientId, $parentVisualizationId)) {
+                    $this->SendStatusToClient($clientId, 'Elternansicht automatisch freigeschaltet.');
+                } elseif ($this->IsAuthorized($clientId)) {
                     $this->SendStatusToClient($clientId, '');
                 } else {
                     $this->SendToTile(['kind' => 'locked', 'target' => $clientId]);
@@ -403,9 +407,16 @@ class FritzKindersicherung extends IPSModuleStrict
             ];
         }
 
+        $parentVisualizationId = $this->ReadPropertyInteger('ParentVisualizationID');
+        $handoffToken = '';
+        if ($this->ReadPropertyBoolean('AutoOpenParentVisualization') && $parentVisualizationId > 0) {
+            $handoffToken = $this->CreateParentHandoff($parentVisualizationId);
+        }
+
         $this->SendToTile([
             'kind' => 'auth', 'target' => $clientId, 'ok' => true,
-            'expires' => $expires, 'payload' => $payload
+            'expires' => $expires, 'payload' => $payload,
+            'handoffToken' => $handoffToken
         ]);
     }
 
@@ -1336,6 +1347,70 @@ class FritzKindersicherung extends IPSModuleStrict
         }
         $v = strtolower(trim((string) $value));
         return in_array($v, ['1', 'true', 'yes', 'on'], true);
+    }
+
+    /**
+     * BUILD14: Erzeugt einen kurzlebigen Einmal-Schlüssel für den Wechsel in die Eltern-Visualisierung.
+     * Dadurch muss die neu geladene HTML-Kachel nicht erneut nach der PIN fragen.
+     */
+    private function CreateParentHandoff(int $parentVisualizationId): string
+    {
+        $this->CleanupParentHandoffs();
+        $token = bin2hex(random_bytes(16));
+        $handoffs = $this->GetJsonBuffer('ParentHandoffs');
+        $handoffs[$token] = [
+            'expires' => time() + 30,
+            'parentVisualizationId' => $parentVisualizationId
+        ];
+        // Puffer klein halten.
+        if (count($handoffs) > 20) {
+            uasort($handoffs, static fn(array $a, array $b): int => ((int) ($a['expires'] ?? 0)) <=> ((int) ($b['expires'] ?? 0)));
+            while (count($handoffs) > 20) {
+                array_shift($handoffs);
+            }
+        }
+        $this->SetJsonBuffer('ParentHandoffs', $handoffs);
+        return $token;
+    }
+
+    private function ConsumeParentHandoff(string $token, string $clientId, int $parentVisualizationId): bool
+    {
+        if (!preg_match('/^[a-f0-9]{32}$/', $token)) {
+            return false;
+        }
+        $this->CleanupParentHandoffs();
+        $handoffs = $this->GetJsonBuffer('ParentHandoffs');
+        $entry = is_array($handoffs[$token] ?? null) ? $handoffs[$token] : null;
+        if ($entry === null) {
+            return false;
+        }
+        $expectedParentId = (int) ($entry['parentVisualizationId'] ?? 0);
+        if ($expectedParentId <= 0 || $parentVisualizationId !== $expectedParentId || (int) ($entry['expires'] ?? 0) < time()) {
+            unset($handoffs[$token]);
+            $this->SetJsonBuffer('ParentHandoffs', $handoffs);
+            return false;
+        }
+
+        // Einmal-Schlüssel sofort verbrauchen und den neuen Browser-Client für die normale PIN-Zeit freigeben.
+        unset($handoffs[$token]);
+        $this->SetJsonBuffer('ParentHandoffs', $handoffs);
+        $this->Authorize($clientId);
+        return true;
+    }
+
+    private function CleanupParentHandoffs(): void
+    {
+        $handoffs = $this->GetJsonBuffer('ParentHandoffs');
+        if ($handoffs === []) {
+            return;
+        }
+        $now = time();
+        foreach ($handoffs as $token => $entry) {
+            if (!is_array($entry) || (int) ($entry['expires'] ?? 0) < $now) {
+                unset($handoffs[$token]);
+            }
+        }
+        $this->SetJsonBuffer('ParentHandoffs', $handoffs);
     }
 
     private function Authorize(string $clientId): int

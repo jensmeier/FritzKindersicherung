@@ -64,7 +64,7 @@
         },
         {
           "type": "Label",
-          "caption": "BUILD13: Die Ziel-Visualisierung kann unten per Automatik-Assistent erzeugt und eingetragen werden. Der Wechsel erfolgt per Browser-URL und ist für Fully Kiosk sowie normale Browser gedacht."
+          "caption": "BUILD14: Die Ziel-Visualisierung kann unten per Automatik-Assistent erzeugt und eingetragen werden. Der Wechsel erfolgt per Browser-URL und ist für Fully Kiosk sowie normale Browser gedacht."
         }
       ]
     },
@@ -170,7 +170,7 @@
   "actions": [
     {
       "type": "Label",
-      "caption": "BUILD13: Automatik-Assistent für eine separate große Eltern-Visualisierung. Funktioniert browserbasiert auf Fully Kiosk, Android-Browsern und Windows-Browsern."
+      "caption": "BUILD14: Automatik-Assistent für eine separate große Eltern-Visualisierung. Funktioniert browserbasiert auf Fully Kiosk, Android-Browsern und Windows-Browsern."
     },
     {
       "type": "Button",

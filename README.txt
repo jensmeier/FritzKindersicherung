@@ -1,4 +1,4 @@
-FRITZ!Box Kindersicherung – BUILD11
+FRITZ!Box Kindersicherung – BUILD14
 
 Basis: BUILD9 (stabile Hauptkachel + Onlinezeit Kinder).
 
@@ -32,3 +32,13 @@ BUILD13
 - Trägt die Eltern-Visualisierung automatisch als Ziel nach korrekter PIN ein.
 - Browserbasierter Wechsel: Fully Kiosk (Android Tablet), Chrome/Edge/Firefox unter Windows und Android-Browser.
 - Android Symcon Visualization App ist für diesen URL-Wechsel nicht garantiert; dafür die Browser/Fully-Variante verwenden.
+
+
+BUILD14
+- Behebt die PIN-Schleife beim Wechsel in die separate Visualisierung "FRITZ Eltern".
+- Nach korrekter PIN erzeugt das Modul einen zufälligen, nur 30 Sekunden gültigen Einmal-Schlüssel.
+- Dieser Schlüssel wird beim Wechsel an die Eltern-Visualisierung übergeben und dort genau einmal verbraucht.
+- Die neu geladene Elternansicht übernimmt dadurch die bestehende Freigabe automatisch; keine zweite PIN-Eingabe.
+- Die Elternansicht erkennt sich zusätzlich über URL-Marker und öffnet sich nicht selbst erneut (kein Redirect-Loop).
+- Rücksprung kennt die vorherige Visualisierungs-ID über die URL und benötigt dafür keinen Browser-Session-Speicher.
+- Einmal-Schlüssel enthält weder PIN noch FRITZ!Box-Zugangsdaten und wird serverseitig nach Benutzung sofort gelöscht.
