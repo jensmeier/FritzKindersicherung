@@ -26,7 +26,8 @@ class FritzKindersicherung extends IPSModuleStrict
         $this->RegisterPropertyString('Devices', '[]');
         // BUILD12: Optionale eigene Kachel-Visualisierung als große Elternansicht.
         $this->RegisterPropertyInteger('ParentVisualizationID', 0);
-        $this->RegisterPropertyBoolean('AutoOpenParentVisualization', true);
+        $this->RegisterPropertyBoolean('AutoOpenParentVisualization', false); // Alt/Kompatibilität, BUILD16 nutzt Popup.
+        $this->RegisterPropertyBoolean('AutoOpenParentPopup', true);
 
         // BUILD9: Status für Zusatzanzeigen wird ausschließlich im Modul-Buffer gehalten.
         // Dadurch entsteht keine schreibgeschützte Variable und keine Warnung beim Aktualisieren.
@@ -437,17 +438,12 @@ class FritzKindersicherung extends IPSModuleStrict
             ];
         }
 
-        $parentVisualizationId = $this->ReadPropertyInteger('ParentVisualizationID');
-        $handoffToken = '';
-        if ($this->ReadPropertyBoolean('AutoOpenParentVisualization') && $parentVisualizationId > 0) {
-            $handoffToken = $this->CreateParentHandoff($parentVisualizationId, $sourceVisualizationId, $clientId);
-            $this->CreatePendingParentGrant($clientId, $browserKey, $parentVisualizationId, $sourceVisualizationId, $expires);
-        }
-
+        // BUILD16: Keine zweite Symcon-Visualisierung mehr. Die Elternansicht wird
+        // direkt aus der bereits authentifizierten HTML-SDK-Kachel als Browser-Popup erzeugt.
+        // Dadurch bleibt die sichere HTML-SDK-Kommunikation im ursprünglichen Client erhalten.
         $this->SendToTile([
             'kind' => 'auth', 'target' => $clientId, 'ok' => true,
-            'expires' => $expires, 'payload' => $payload,
-            'handoffToken' => $handoffToken
+            'expires' => $expires, 'payload' => $payload
         ]);
     }
 
@@ -955,8 +951,9 @@ class FritzKindersicherung extends IPSModuleStrict
             'profiles' => $profileList,
             'ticketTimeMinutes' => 45,
             'issuedTickets' => $this->GetIssuedTicketStatus(),
-            'parentVisualizationId' => $this->ReadPropertyInteger('ParentVisualizationID'),
-            'autoOpenParentVisualization' => $this->ReadPropertyBoolean('AutoOpenParentVisualization'),
+            'parentVisualizationId' => 0,
+            'autoOpenParentVisualization' => false,
+            'autoOpenParentPopup' => $this->ReadPropertyBoolean('AutoOpenParentPopup'),
             'message' => $message
         ];
         $json = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);

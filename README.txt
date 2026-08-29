@@ -49,3 +49,6 @@ BUILD15:
 - Fallback: 15-Sekunden-Einmalfreigabe für den unmittelbar neu geladenen HTML-Client, falls Symcon/Fully URL-Parameter oder Browser-Speicher nicht weiterreicht.
 - Rücksprung verbessert: ursprüngliche Visualisierung wird vor dem Wechsel gemerkt; zusätzlich wird ihre Visualisierungs-ID serverseitig an den Eltern-Client übergeben.
 - Zurück-/Schloss-Schaltfläche in der Elternansicht sperrt alle Clients desselben Browsers und springt zur Ausgangsvisualisierung zurück.
+
+
+BUILD16: Elternansicht als echtes Browser-Popup direkt aus der 2x2-PIN-Kachel. Keine zweite Visualisierung. Popup wird beim OK-Tipp vor der PIN-Prüfung geöffnet (Popup-Blocker-sicherer), bei falscher PIN sofort geschlossen. Aktionen laufen weiterhin über den sicheren HTML-SDK-Kanal des Ursprungsfensters. Windows: eigenes Fenster; Android/Fully Kiosk: Popup/neues Fenster, sofern Popups erlaubt sind.

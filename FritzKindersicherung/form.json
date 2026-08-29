@@ -49,22 +49,17 @@
     },
     {
       "type": "ExpansionPanel",
-      "caption": "Elternansicht auf Tablet / Fully Kiosk",
+      "caption": "Elternansicht als Popup",
       "expanded": true,
       "items": [
         {
           "type": "CheckBox",
-          "name": "AutoOpenParentVisualization",
-          "caption": "Nach korrekter PIN automatisch große Eltern-Visualisierung öffnen"
-        },
-        {
-          "type": "SelectInstance",
-          "name": "ParentVisualizationID",
-          "caption": "Kachel-Visualisierung für Elternansicht"
+          "name": "AutoOpenParentPopup",
+          "caption": "Nach korrekter PIN Elternansicht automatisch als Popup/Fenster öffnen"
         },
         {
           "type": "Label",
-          "caption": "BUILD14: Die Ziel-Visualisierung kann unten per Automatik-Assistent erzeugt und eingetragen werden. Der Wechsel erfolgt per Browser-URL und ist für Fully Kiosk sowie normale Browser gedacht."
+          "caption": "BUILD16: Die Elternansicht wird direkt vom 2x2-PIN-Feld geöffnet. Keine zweite Symcon-Visualisierung nötig. Auf Fully Kiosk müssen Popups/neue Fenster erlaubt sein."
         }
       ]
     },
@@ -170,12 +165,7 @@
   "actions": [
     {
       "type": "Label",
-      "caption": "BUILD14: Automatik-Assistent für eine separate große Eltern-Visualisierung. Funktioniert browserbasiert auf Fully Kiosk, Android-Browsern und Windows-Browsern."
-    },
-    {
-      "type": "Button",
-      "caption": "Eltern-Visualisierung automatisch einrichten",
-      "onClick": "echo FKS_SetupParentVisualization($id);"
+      "caption": "BUILD16: Elternansicht als Popup. Keine separate Eltern-Visualisierung erforderlich."
     },
     {
       "type": "Button",
