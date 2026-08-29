@@ -1,4 +1,4 @@
-FRITZ!Box Kindersicherung – BUILD6
+FRITZ!Box Kindersicherung – BUILD7
 
 Neu/Fixes:
 - Symcon 9 Vollbild-Unterstützung: SetVisualizationType(2)
@@ -14,3 +14,8 @@ Das Modul kann die Symcon-Kachel nicht selbstständig in Vollbild öffnen. Ab Sy
 
 Sicherheit:
 Im Testmodus werden keine Sperren, Profilwechsel, +45-Minuten-Buchungen oder Ticketcodes ausgeführt.
+
+BUILD7:
+- Regression aus BUILD6 behoben: SetVisualizationType wieder auf 1.
+- PIN-Kachel wird dadurch wieder direkt als HTML-SDK-Kachel dargestellt.
+- Vollbild über den Symcon-Pfeil bleibt vorerst deaktiviert/ungeeignet; die kompakte 2x2-Kachel bleibt funktionsfähig.

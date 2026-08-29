@@ -13,7 +13,7 @@ class FritzKindersicherung extends IPSModuleStrict
     {
         parent::Create();
 
-        $this->SetVisualizationType(2);
+        $this->SetVisualizationType(1);
 
         $this->RegisterPropertyString('Host', 'fritz.box');
         $this->RegisterPropertyString('User', '');
@@ -32,9 +32,10 @@ class FritzKindersicherung extends IPSModuleStrict
     {
         parent::ApplyChanges();
 
-        // Symcon 9: HTML-SDK sowohl in der normalen Kachel als auch in der maximierten Ansicht.
-        // Wichtig auch in ApplyChanges(), damit bestehende BUILD1-5-Instanzen von Typ 1 auf Typ 2 migrieren.
-        $this->SetVisualizationType(2);
+        // BUILD7: Zurück auf den stabilen HTML-SDK-Kachelmodus.
+        // Typ 2 führte auf dem Zielsystem zu einer leeren Darstellung und ersetzte die PIN-Kachel durch die Listenansicht.
+        // Typ 1 stellt die funktionierende PIN-geschützte Kachel wieder her.
+        $this->SetVisualizationType(1);
 
         $refresh = max(15, $this->ReadPropertyInteger('RefreshSeconds'));
         $this->SetTimerInterval('RefreshTimer', $refresh * 1000);
