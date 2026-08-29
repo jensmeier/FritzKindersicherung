@@ -640,7 +640,10 @@ class FritzKindersicherung extends IPSModuleStrict
                 $msg .= ' Diagnose: Bei der Kontrolle änderten sich zusätzlich Werte bei ' . implode(', ', $changed) . '.';
             }
             if ($ticketValid > 0 || $tickets > 0) {
-                $msg .= ' Aktive Zusatzzeit: ' . $ticketValid . ' min';
+                $extraText = $ticketValid < 60
+                    ? $ticketValid . ' min'
+                    : intdiv($ticketValid, 60) . ':' . str_pad((string) ($ticketValid % 60), 2, '0', STR_PAD_LEFT) . ' Std.';
+                $msg .= ' Aktive Zusatzzeit: ' . $extraText;
                 if ($tickets > 0) {
                     $msg .= ' · vorgemerkt: ' . $tickets;
                 }

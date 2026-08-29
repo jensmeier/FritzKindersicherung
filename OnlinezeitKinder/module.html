@@ -58,6 +58,12 @@
     if(h>0) return `${h} h ${m} min`;
     return `${m} min`;
   }
+  function fmtExtraMin(min){
+    min=Math.max(0,Math.floor(Number(min)||0));
+    if(min<60) return `${min} min`;
+    const h=Math.floor(min/60),m=min%60;
+    return `${h}:${String(m).padStart(2,'0')} Std.`;
+  }
   function applySizing(){
     const w=Math.max(1,root.clientWidth||document.documentElement.clientWidth||240);
     const h=Math.max(1,root.clientHeight||document.documentElement.clientHeight||150);
@@ -93,7 +99,7 @@
     el.tickets.style.display=showTickets?'block':'none';
     if(showTickets){
       const extra=Number(g.activeExtraMax)||0;
-      el.tickets.textContent=`${extra>0?`+Zeit bis ${extra} min · `:''}Ticketcodes: ${globalTicketCodes}`;
+      el.tickets.textContent=`${extra>0?`+Zeit bis ${fmtExtraMin(extra)} · `:''}Ticketcodes: ${globalTicketCodes}`;
     }
     renderDots();applySizing();
   }

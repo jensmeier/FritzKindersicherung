@@ -1,4 +1,4 @@
-FRITZ!Box Kindersicherung – BUILD18
+FRITZ!Box Kindersicherung – BUILD19
 
 Basis: BUILD9 (stabile Hauptkachel + Onlinezeit Kinder).
 
@@ -66,3 +66,10 @@ BUILD18:
 - Gemeinsames Budget und gerätebezogene Zusatzzeit werden in der Anzeige klar getrennt.
 - Gruppenknopf 'Gemeinsames Budget +45' entfernt; jeder geeignete Host hat seinen eigenen +45-min-Knopf.
 - Vorher/Nachher-Diagnose bleibt erhalten, behauptet aber keine profilweite Spiegelung mehr.
+
+
+BUILD19:
+- Zusatzzeit ab 60 Minuten wird lesbarer als Stunden:Minuten angezeigt (z. B. 87 min -> 1:27 Std., 160 min -> 2:40 Std.).
+- Einheitliche Darstellung in Eltern-Popup, großer Hauptansicht, 2x2-Kompaktinfo und 1x1-Kachel „Onlinezeit Kinder“.
+- Schrift in der Elternansicht deutlich vergrößert: Gerätenamen, Status, Zusatzzeit, Profile, Gruppen, Ticketcodes und Schaltflächen.
+- PIN-/2x2-Kachel bleibt bewusst unverändert kompakt.
