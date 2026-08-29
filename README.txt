@@ -25,3 +25,10 @@ BUILD12:
 - Fully-Kiosk/Symcon-9.0-Workaround: Nach erfolgreicher PIN kann automatisch auf eine separate große Kachel-Visualisierung gewechselt werden.
 - Rückkehr/Sperren führt zurück zur vorherigen Visualisierung.
 - Keine zusätzliche Eltern-Modulinstanz nötig; die zweite Visualisierung enthält nur einen Link auf dieselbe Kindersicherungs-Instanz.
+
+BUILD13
+- Automatik-Assistent: erzeugt/konfiguriert nach Möglichkeit eine eigene Kachel-Visualisierung "FRITZ Eltern".
+- Erzeugt die Startkategorie "FRITZ Eltern Ansicht" und einen Link auf die vorhandene Kindersicherungsinstanz.
+- Trägt die Eltern-Visualisierung automatisch als Ziel nach korrekter PIN ein.
+- Browserbasierter Wechsel: Fully Kiosk (Android Tablet), Chrome/Edge/Firefox unter Windows und Android-Browser.
+- Android Symcon Visualization App ist für diesen URL-Wechsel nicht garantiert; dafür die Browser/Fully-Variante verwenden.

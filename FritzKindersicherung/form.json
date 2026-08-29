@@ -64,7 +64,7 @@
         },
         {
           "type": "Label",
-          "caption": "Für Symcon 9.0: Eine zweite Kachel-Visualisierung anlegen, darin nur einen Link auf diese Kindersicherungs-Instanz platzieren und die Kachel groß aufziehen. Die Visualisierung hier auswählen. Die 2x2-PIN-Kachel springt danach automatisch dorthin; beim Sperren geht es zurück."
+          "caption": "BUILD13: Die Ziel-Visualisierung kann unten per Automatik-Assistent erzeugt und eingetragen werden. Der Wechsel erfolgt per Browser-URL und ist für Fully Kiosk sowie normale Browser gedacht."
         }
       ]
     },
@@ -170,7 +170,12 @@
   "actions": [
     {
       "type": "Label",
-      "caption": "BUILD12: Fully-Kiosk-Workaround für Symcon 9.0: 2x2 PIN-Kachel kann nach korrekter PIN automatisch auf eine separate große Kachel-Visualisierung wechseln. Onlinezeit-Kinder bleibt unverändert."
+      "caption": "BUILD13: Automatik-Assistent für eine separate große Eltern-Visualisierung. Funktioniert browserbasiert auf Fully Kiosk, Android-Browsern und Windows-Browsern."
+    },
+    {
+      "type": "Button",
+      "caption": "Eltern-Visualisierung automatisch einrichten",
+      "onClick": "echo FKS_SetupParentVisualization($id);"
     },
     {
       "type": "Button",

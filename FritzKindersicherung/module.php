@@ -180,6 +180,51 @@ class FritzKindersicherung extends IPSModuleStrict
         }
     }
 
+    /**
+     * BUILD13: Richtet eine separate Kachel-Visualisierung als große Elternansicht weitgehend automatisch ein.
+     * Die Visualisierung erhält eine eigene Startkategorie mit einem Link auf diese Instanz.
+     * Anschließend wird sie als Ziel für den automatischen Wechsel nach korrekter PIN hinterlegt.
+     */
+    public function SetupParentVisualization(): string
+    {
+        try {
+            $moduleId = $this->FindTileVisualizationModuleId();
+            if ($moduleId === '') {
+                throw new Exception('Modul "Kachel Visualisierung" wurde nicht gefunden.');
+            }
+
+            $categoryId = $this->FindOrCreateParentViewCategory();
+            $this->EnsureParentViewLink($categoryId);
+
+            $visId = $this->FindParentVisualizationByName($moduleId);
+            $created = false;
+            if ($visId === 0) {
+                $visId = IPS_CreateInstance($moduleId);
+                IPS_SetName($visId, 'FRITZ Eltern');
+                $created = true;
+            }
+
+            $this->ConfigureTileVisualizationStartCategory($visId, $categoryId, $moduleId);
+
+            IPS_SetProperty($this->InstanceID, 'ParentVisualizationID', $visId);
+            IPS_SetProperty($this->InstanceID, 'AutoOpenParentVisualization', true);
+            IPS_ApplyChanges($this->InstanceID);
+
+            return sprintf(
+                "OK – Eltern-Visualisierung %s (ID %d) ist eingerichtet. Ziel-URL im Browser: /#%d\n" .
+                "Nach korrekter PIN versucht die 2x2-Kachel automatisch dorthin zu wechseln. " .
+                "Zum Testen am Windows-PC die normale Symcon-Adresse öffnen und am Ende #%-d verwenden.",
+                $created ? 'neu erstellt' : 'gefunden/aktualisiert',
+                $visId,
+                $visId,
+                $visId
+            );
+        } catch (Throwable $e) {
+            $this->SendDebug('SetupParentVisualization', $e->getMessage(), 0);
+            return 'Fehler beim automatischen Einrichten: ' . $e->getMessage();
+        }
+    }
+
     public function Refresh(): void
     {
         try {
@@ -621,6 +666,167 @@ class FritzKindersicherung extends IPSModuleStrict
         $this->SendToTile([
             'kind' => 'status', 'target' => $clientId, 'expires' => $expires, 'payload' => $payload
         ]);
+    }
+
+    private function FindTileVisualizationModuleId(): string
+    {
+        foreach (IPS_GetModuleList() as $moduleId) {
+            try {
+                $m = IPS_GetModule($moduleId);
+            } catch (Throwable) {
+                continue;
+            }
+            $name = strtolower((string) ($m['ModuleName'] ?? $m['ModuleNameDE'] ?? ''));
+            if ($name === '') {
+                $name = strtolower((string) ($m['ModuleName'] ?? ''));
+            }
+            if (str_contains($name, 'kachel') && str_contains($name, 'visual')) {
+                return (string) $moduleId;
+            }
+            if (str_contains($name, 'tile') && str_contains($name, 'visual')) {
+                return (string) $moduleId;
+            }
+        }
+        return '';
+    }
+
+    private function FindOrCreateParentViewCategory(): int
+    {
+        foreach (IPS_GetChildrenIDs($this->InstanceID) as $id) {
+            $obj = IPS_GetObject($id);
+            if ((int) ($obj['ObjectType'] ?? -1) === 0 && IPS_GetName($id) === 'FRITZ Eltern Ansicht') {
+                return $id;
+            }
+        }
+        $id = IPS_CreateCategory();
+        IPS_SetParent($id, $this->InstanceID);
+        IPS_SetName($id, 'FRITZ Eltern Ansicht');
+        IPS_SetPosition($id, 9990);
+        return $id;
+    }
+
+    private function EnsureParentViewLink(int $categoryId): void
+    {
+        foreach (IPS_GetChildrenIDs($categoryId) as $id) {
+            $obj = IPS_GetObject($id);
+            if ((int) ($obj['ObjectType'] ?? -1) !== 6) {
+                continue;
+            }
+            try {
+                if (IPS_GetLink($id)['TargetID'] === $this->InstanceID) {
+                    IPS_SetName($id, 'FRITZ!Box Kindersicherung');
+                    return;
+                }
+            } catch (Throwable) {
+            }
+        }
+        $link = IPS_CreateLink();
+        IPS_SetParent($link, $categoryId);
+        IPS_SetName($link, 'FRITZ!Box Kindersicherung');
+        IPS_SetLinkTargetID($link, $this->InstanceID);
+        IPS_SetPosition($link, 10);
+    }
+
+    private function FindParentVisualizationByName(string $moduleId): int
+    {
+        foreach (IPS_GetInstanceListByModuleID($moduleId) as $id) {
+            if (IPS_GetName($id) === 'FRITZ Eltern') {
+                return (int) $id;
+            }
+        }
+        return 0;
+    }
+
+    private function ConfigureTileVisualizationStartCategory(int $visId, int $categoryId, string $moduleId): void
+    {
+        $newConfig = json_decode(IPS_GetConfiguration($visId), true);
+        if (!is_array($newConfig)) {
+            $newConfig = [];
+        }
+
+        $candidatePath = $this->FindStartCategoryPath($newConfig, false);
+        if ($candidatePath === []) {
+            foreach (IPS_GetInstanceListByModuleID($moduleId) as $otherId) {
+                if ((int) $otherId === $visId) {
+                    continue;
+                }
+                $cfg = json_decode(IPS_GetConfiguration((int) $otherId), true);
+                if (!is_array($cfg)) {
+                    continue;
+                }
+                $candidatePath = $this->FindStartCategoryPath($cfg, true);
+                if ($candidatePath !== []) {
+                    break;
+                }
+            }
+        }
+
+        if ($candidatePath === []) {
+            throw new Exception('Startkategorie der Kachel-Visualisierung konnte nicht automatisch erkannt werden. Die Visualisierung "FRITZ Eltern" wurde angelegt; bitte dort einmal manuell als Startkategorie "FRITZ Eltern Ansicht" wählen.');
+        }
+
+        $this->SetConfigValueByPath($newConfig, $candidatePath, $categoryId);
+        IPS_SetConfiguration($visId, json_encode($newConfig, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+        IPS_ApplyChanges($visId);
+    }
+
+    /** @return array<int, string|int> */
+    private function FindStartCategoryPath(array $config, bool $preferExistingCategory): array
+    {
+        $bestPath = [];
+        $bestScore = -1;
+        $walk = function (mixed $value, array $path) use (&$walk, &$bestPath, &$bestScore, $preferExistingCategory): void {
+            if (is_array($value)) {
+                foreach ($value as $k => $v) {
+                    $walk($v, array_merge($path, [$k]));
+                }
+                return;
+            }
+            if (!is_int($value) && !(is_string($value) && ctype_digit($value))) {
+                return;
+            }
+            $num = (int) $value;
+            $key = strtolower((string) end($path));
+            $score = 0;
+            if (str_contains($key, 'start')) $score += 12;
+            if (str_contains($key, 'root')) $score += 11;
+            if (str_contains($key, 'category')) $score += 10;
+            if (str_contains($key, 'base')) $score += 7;
+            if (str_contains($key, 'object')) $score += 3;
+            if (str_contains($key, 'page')) $score += 2;
+
+            if ($num > 0 && IPS_ObjectExists($num)) {
+                $obj = IPS_GetObject($num);
+                if ((int) ($obj['ObjectType'] ?? -1) === 0) {
+                    $score += 20;
+                }
+            } elseif ($preferExistingCategory) {
+                $score -= 4;
+            }
+
+            if ($score > $bestScore && $score >= 8) {
+                $bestScore = $score;
+                $bestPath = $path;
+            }
+        };
+        $walk($config, []);
+        return $bestPath;
+    }
+
+    /** @param array<int, string|int> $path */
+    private function SetConfigValueByPath(array &$config, array $path, mixed $value): void
+    {
+        $ref =& $config;
+        foreach ($path as $i => $part) {
+            if ($i === count($path) - 1) {
+                $ref[$part] = $value;
+                return;
+            }
+            if (!isset($ref[$part]) || !is_array($ref[$part])) {
+                $ref[$part] = [];
+            }
+            $ref =& $ref[$part];
+        }
     }
 
     private function BuildStatusPayload(string $message): array
