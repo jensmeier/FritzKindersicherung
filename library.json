@@ -2,11 +2,11 @@
   "id": "{C7B754A4-7C9E-4BB8-A802-5EE6208E77F2}",
   "author": "JZCG",
   "name": "FRITZ Kindersicherung",
-  "url": "",
+  "url": "https://github.com/jensmeier/FritzKindersicherung",
   "compatibility": {
     "version": "8.1"
   },
   "version": "1.0",
-  "build": 1,
-  "date": 1788001200
+  "build": 2,
+  "date": 1788007581
 }

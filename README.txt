@@ -1,7 +1,7 @@
-FRITZ!Box Kindersicherung für IP-Symcon – BUILD1
+FRITZ!Box Kindersicherung für IP-Symcon – BUILD2
 =================================================
 
-Ziel von BUILD1
+Ziel von BUILD2
 ---------------
 - PIN-geschützte HTML-SDK-Kachel
 - PIN wird serverseitig geprüft; keine FRITZ!Box-Zugangsdaten/PIN im Kachel-HTML
@@ -10,7 +10,7 @@ Ziel von BUILD1
 - 3 falsche PINs => 30 s Eingabesperre
 - Status lesen: Internet erlaubt/gesperrt, Profil-ID, Zeitverbrauch/Zeitbudget (wenn FRITZ!OS dies liefert)
 - Geräte einzeln oder gruppenweise sperren/freigeben
-- WICHTIG: Standard ist TESTMODUS = nur lesen. Im Testmodus verändert BUILD1 nichts an der FRITZ!Box.
+- WICHTIG: Standard ist TESTMODUS = nur lesen. Im Testmodus verändert BUILD2 nichts an der FRITZ!Box.
 
 Voraussetzungen
 ---------------
