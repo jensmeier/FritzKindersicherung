@@ -1,4 +1,4 @@
-FRITZ!Box Kindersicherung – BUILD14
+FRITZ!Box Kindersicherung – BUILD15
 
 Basis: BUILD9 (stabile Hauptkachel + Onlinezeit Kinder).
 
@@ -42,3 +42,10 @@ BUILD14
 - Die Elternansicht erkennt sich zusätzlich über URL-Marker und öffnet sich nicht selbst erneut (kein Redirect-Loop).
 - Rücksprung kennt die vorherige Visualisierungs-ID über die URL und benötigt dafür keinen Browser-Session-Speicher.
 - Einmal-Schlüssel enthält weder PIN noch FRITZ!Box-Zugangsdaten und wird serverseitig nach Benutzung sofort gelöscht.
+
+BUILD15:
+- Behebt die PIN-Schleife beim Wechsel in die separate Visualisierung "FRITZ Eltern".
+- Freigabe wird zusätzlich über einen zufälligen, kurzlebig serverseitig geprüften Browser-Schlüssel übernommen; die PIN selbst wird nicht gespeichert.
+- Fallback: 15-Sekunden-Einmalfreigabe für den unmittelbar neu geladenen HTML-Client, falls Symcon/Fully URL-Parameter oder Browser-Speicher nicht weiterreicht.
+- Rücksprung verbessert: ursprüngliche Visualisierung wird vor dem Wechsel gemerkt; zusätzlich wird ihre Visualisierungs-ID serverseitig an den Eltern-Client übergeben.
+- Zurück-/Schloss-Schaltfläche in der Elternansicht sperrt alle Clients desselben Browsers und springt zur Ausgangsvisualisierung zurück.

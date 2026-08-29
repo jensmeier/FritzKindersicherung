@@ -105,15 +105,34 @@ class FritzKindersicherung extends IPSModuleStrict
         if ($clientId === '' || strlen($clientId) > 100) {
             return;
         }
+        // BUILD15: Browser-Schlüssel bleibt beim Wechsel zwischen zwei Symcon-Visualisierungen
+        // auf demselben Gerät erhalten. Damit wird die bereits bestätigte PIN sicher in die
+        // Eltern-Visualisierung übernommen, auch wenn Symcon den HTML-Client neu erzeugt.
+        $browserKey = strtolower(trim((string) ($cmd['browserKey'] ?? '')));
+        if (!preg_match('/^[a-f0-9]{32,64}$/', $browserKey)) {
+            $browserKey = '';
+        }
 
         $op = (string) ($cmd['op'] ?? '');
         $this->CleanupAuthClients();
+        $this->CleanupBrowserAuth();
+        if ($browserKey !== '') {
+            $this->RegisterBrowserClient($browserKey, $clientId);
+        }
 
         switch ($op) {
             case 'hello':
                 $handoffToken = strtolower(trim((string) ($cmd['handoffToken'] ?? '')));
                 $parentVisualizationId = (int) ($cmd['parentVisualizationId'] ?? 0);
                 if ($handoffToken !== '' && $this->ConsumeParentHandoff($handoffToken, $clientId, $parentVisualizationId)) {
+                    if ($browserKey !== '') {
+                        $this->AuthorizeBrowser($browserKey, $this->GetAuthorizationExpiry($clientId));
+                    }
+                    $this->SendStatusToClient($clientId, 'Elternansicht automatisch freigeschaltet.');
+                } elseif ($browserKey !== '' && $this->AuthorizeClientFromBrowser($clientId, $browserKey)) {
+                    $this->AdoptPendingReturnForClient($clientId, $browserKey);
+                    $this->SendStatusToClient($clientId, 'Elternansicht automatisch freigeschaltet.');
+                } elseif ($this->ConsumePendingParentGrant($clientId, $browserKey, $parentVisualizationId)) {
                     $this->SendStatusToClient($clientId, 'Elternansicht automatisch freigeschaltet.');
                 } elseif ($this->IsAuthorized($clientId)) {
                     $this->SendStatusToClient($clientId, '');
@@ -123,11 +142,19 @@ class FritzKindersicherung extends IPSModuleStrict
                 return;
 
             case 'unlock':
-                $this->HandleUnlock($clientId, (string) ($cmd['pin'] ?? ''));
+                $this->HandleUnlock(
+                    $clientId,
+                    (string) ($cmd['pin'] ?? ''),
+                    $browserKey,
+                    (int) ($cmd['sourceVisualizationId'] ?? 0)
+                );
                 return;
 
             case 'lock':
                 $this->RemoveAuthorization($clientId);
+                if ($browserKey !== '') {
+                    $this->RemoveBrowserAuthorization($browserKey);
+                }
                 $this->SendToTile(['kind' => 'locked', 'target' => $clientId, 'message' => 'Gesperrt.']);
                 return;
         }
@@ -359,7 +386,7 @@ class FritzKindersicherung extends IPSModuleStrict
         }
     }
 
-    private function HandleUnlock(string $clientId, string $pin): void
+    private function HandleUnlock(string $clientId, string $pin, string $browserKey = '', int $sourceVisualizationId = 0): void
     {
         $failed = $this->GetJsonBuffer('FailedClients');
         $now = time();
@@ -396,6 +423,9 @@ class FritzKindersicherung extends IPSModuleStrict
         unset($failed[$clientId]);
         $this->SetJsonBuffer('FailedClients', $failed);
         $expires = $this->Authorize($clientId);
+        if ($browserKey !== '') {
+            $this->AuthorizeBrowser($browserKey, $expires);
+        }
 
         try {
             $payload = $this->BuildStatusPayload('PIN akzeptiert.');
@@ -410,7 +440,8 @@ class FritzKindersicherung extends IPSModuleStrict
         $parentVisualizationId = $this->ReadPropertyInteger('ParentVisualizationID');
         $handoffToken = '';
         if ($this->ReadPropertyBoolean('AutoOpenParentVisualization') && $parentVisualizationId > 0) {
-            $handoffToken = $this->CreateParentHandoff($parentVisualizationId);
+            $handoffToken = $this->CreateParentHandoff($parentVisualizationId, $sourceVisualizationId, $clientId);
+            $this->CreatePendingParentGrant($clientId, $browserKey, $parentVisualizationId, $sourceVisualizationId, $expires);
         }
 
         $this->SendToTile([
@@ -667,6 +698,10 @@ class FritzKindersicherung extends IPSModuleStrict
         $expires = $this->GetAuthorizationExpiry($clientId);
         try {
             $payload = $this->BuildStatusPayload($message);
+            $returnVisualizationId = $this->GetReturnVisualizationForClient($clientId);
+            if ($returnVisualizationId > 0) {
+                $payload['returnVisualizationId'] = $returnVisualizationId;
+            }
         } catch (Throwable $e) {
             $payload = [
                 'readOnly' => $this->ReadPropertyBoolean('ReadOnly'),
@@ -1353,14 +1388,16 @@ class FritzKindersicherung extends IPSModuleStrict
      * BUILD14: Erzeugt einen kurzlebigen Einmal-Schlüssel für den Wechsel in die Eltern-Visualisierung.
      * Dadurch muss die neu geladene HTML-Kachel nicht erneut nach der PIN fragen.
      */
-    private function CreateParentHandoff(int $parentVisualizationId): string
+    private function CreateParentHandoff(int $parentVisualizationId, int $returnVisualizationId = 0, string $sourceClientId = ''): string
     {
         $this->CleanupParentHandoffs();
         $token = bin2hex(random_bytes(16));
         $handoffs = $this->GetJsonBuffer('ParentHandoffs');
         $handoffs[$token] = [
             'expires' => time() + 30,
-            'parentVisualizationId' => $parentVisualizationId
+            'parentVisualizationId' => $parentVisualizationId,
+            'returnVisualizationId' => max(0, $returnVisualizationId),
+            'sourceClientId' => $sourceClientId
         ];
         // Puffer klein halten.
         if (count($handoffs) > 20) {
@@ -1395,6 +1432,14 @@ class FritzKindersicherung extends IPSModuleStrict
         unset($handoffs[$token]);
         $this->SetJsonBuffer('ParentHandoffs', $handoffs);
         $this->Authorize($clientId);
+        $returnVisualizationId = (int) ($entry['returnVisualizationId'] ?? 0);
+        if ($returnVisualizationId > 0) {
+            $this->SetReturnVisualizationForClient($clientId, $returnVisualizationId);
+        }
+        $sourceClientId = (string) ($entry['sourceClientId'] ?? '');
+        if ($sourceClientId !== '' && $sourceClientId !== $clientId) {
+            $this->RemoveAuthorization($sourceClientId);
+        }
         return true;
     }
 
@@ -1411,6 +1456,198 @@ class FritzKindersicherung extends IPSModuleStrict
             }
         }
         $this->SetJsonBuffer('ParentHandoffs', $handoffs);
+    }
+
+    /**
+     * BUILD15: Geräte-/Browserweite Freigabe für denselben Browser auf demselben Symcon-Host.
+     * Es wird nur ein zufälliger Browser-Schlüssel gespeichert, niemals die PIN.
+     */
+    private function AuthorizeBrowser(string $browserKey, int $expires = 0): int
+    {
+        if (!preg_match('/^[a-f0-9]{32,64}$/', $browserKey)) {
+            return 0;
+        }
+        if ($expires <= time()) {
+            $expires = time() + max(30, $this->ReadPropertyInteger('UnlockSeconds'));
+        }
+        $browsers = $this->GetJsonBuffer('BrowserAuth');
+        $browsers[$browserKey] = $expires;
+        $this->SetJsonBuffer('BrowserAuth', $browsers);
+        return $expires;
+    }
+
+    private function AuthorizeClientFromBrowser(string $clientId, string $browserKey): bool
+    {
+        $expires = $this->GetBrowserAuthorizationExpiry($browserKey);
+        if ($expires < time()) {
+            return false;
+        }
+        $clients = $this->GetJsonBuffer('AuthClients');
+        $clients[$clientId] = $expires;
+        $this->SetJsonBuffer('AuthClients', $clients);
+        return true;
+    }
+
+    private function GetBrowserAuthorizationExpiry(string $browserKey): int
+    {
+        if ($browserKey === '') {
+            return 0;
+        }
+        $browsers = $this->GetJsonBuffer('BrowserAuth');
+        return (int) ($browsers[$browserKey] ?? 0);
+    }
+
+    private function RegisterBrowserClient(string $browserKey, string $clientId): void
+    {
+        $map = $this->GetJsonBuffer('BrowserClients');
+        $list = is_array($map[$browserKey] ?? null) ? $map[$browserKey] : [];
+        if (!in_array($clientId, $list, true)) {
+            $list[] = $clientId;
+        }
+        if (count($list) > 10) {
+            $list = array_slice($list, -10);
+        }
+        $map[$browserKey] = $list;
+        $this->SetJsonBuffer('BrowserClients', $map);
+    }
+
+    private function RemoveBrowserAuthorization(string $browserKey): void
+    {
+        $browsers = $this->GetJsonBuffer('BrowserAuth');
+        unset($browsers[$browserKey]);
+        $this->SetJsonBuffer('BrowserAuth', $browsers);
+
+        // Alle HTML-Clients desselben Browsers ebenfalls sperren, damit beim Zurückspringen
+        // nicht die alte 2x2-Kachel noch als freigeschaltet gilt.
+        $map = $this->GetJsonBuffer('BrowserClients');
+        $clients = is_array($map[$browserKey] ?? null) ? $map[$browserKey] : [];
+        $auth = $this->GetJsonBuffer('AuthClients');
+        $returns = $this->GetJsonBuffer('ReturnVisualizationByClient');
+        foreach ($clients as $id) {
+            unset($auth[(string) $id], $returns[(string) $id]);
+        }
+        unset($map[$browserKey]);
+        $this->SetJsonBuffer('AuthClients', $auth);
+        $this->SetJsonBuffer('ReturnVisualizationByClient', $returns);
+        $this->SetJsonBuffer('BrowserClients', $map);
+    }
+
+    private function CleanupBrowserAuth(): void
+    {
+        $browsers = $this->GetJsonBuffer('BrowserAuth');
+        $map = $this->GetJsonBuffer('BrowserClients');
+        $now = time();
+        foreach ($browsers as $key => $expires) {
+            if ((int) $expires < $now) {
+                unset($browsers[$key], $map[$key]);
+            }
+        }
+        $this->SetJsonBuffer('BrowserAuth', $browsers);
+        $this->SetJsonBuffer('BrowserClients', $map);
+    }
+
+    private function CreatePendingParentGrant(string $sourceClientId, string $browserKey, int $parentVisualizationId, int $returnVisualizationId, int $authExpires): void
+    {
+        $grants = $this->GetJsonBuffer('PendingParentGrants');
+        $now = time();
+        foreach ($grants as $key => $grant) {
+            if ((int) ($grant['expires'] ?? 0) < $now) {
+                unset($grants[$key]);
+            }
+        }
+        $id = bin2hex(random_bytes(8));
+        $grants[$id] = [
+            'expires' => $now + 15,
+            'authExpires' => $authExpires,
+            'sourceClientId' => $sourceClientId,
+            'browserKey' => $browserKey,
+            'parentVisualizationId' => $parentVisualizationId,
+            'returnVisualizationId' => max(0, $returnVisualizationId)
+        ];
+        $this->SetJsonBuffer('PendingParentGrants', $grants);
+    }
+
+    private function ConsumePendingParentGrant(string $clientId, string $browserKey, int $parentVisualizationId): bool
+    {
+        $grants = $this->GetJsonBuffer('PendingParentGrants');
+        $now = time();
+        foreach ($grants as $key => $grant) {
+            if ((int) ($grant['expires'] ?? 0) < $now) {
+                unset($grants[$key]);
+                continue;
+            }
+            if ((string) ($grant['sourceClientId'] ?? '') === $clientId) {
+                continue;
+            }
+            $grantBrowser = (string) ($grant['browserKey'] ?? '');
+            if ($grantBrowser !== '' && $browserKey !== '' && !hash_equals($grantBrowser, $browserKey)) {
+                continue;
+            }
+            $expectedParent = (int) ($grant['parentVisualizationId'] ?? 0);
+            if ($parentVisualizationId > 0 && $expectedParent > 0 && $parentVisualizationId !== $expectedParent) {
+                continue;
+            }
+            unset($grants[$key]);
+            $this->SetJsonBuffer('PendingParentGrants', $grants);
+            $expires = (int) ($grant['authExpires'] ?? 0);
+            $clients = $this->GetJsonBuffer('AuthClients');
+            $clients[$clientId] = max($now + 5, $expires);
+            $this->SetJsonBuffer('AuthClients', $clients);
+            if ($browserKey !== '') {
+                $this->AuthorizeBrowser($browserKey, max($now + 5, $expires));
+            }
+            $returnVisualizationId = (int) ($grant['returnVisualizationId'] ?? 0);
+            if ($returnVisualizationId > 0) {
+                $this->SetReturnVisualizationForClient($clientId, $returnVisualizationId);
+            }
+            $sourceClientId = (string) ($grant['sourceClientId'] ?? '');
+            if ($sourceClientId !== '') {
+                $this->RemoveAuthorization($sourceClientId);
+            }
+            return true;
+        }
+        $this->SetJsonBuffer('PendingParentGrants', $grants);
+        return false;
+    }
+
+    private function AdoptPendingReturnForClient(string $clientId, string $browserKey): void
+    {
+        $grants = $this->GetJsonBuffer('PendingParentGrants');
+        $now = time();
+        foreach ($grants as $key => $grant) {
+            if ((int) ($grant['expires'] ?? 0) < $now) {
+                unset($grants[$key]);
+                continue;
+            }
+            $grantBrowser = (string) ($grant['browserKey'] ?? '');
+            if ($browserKey === '' || $grantBrowser === '' || !hash_equals($grantBrowser, $browserKey)) {
+                continue;
+            }
+            $returnVisualizationId = (int) ($grant['returnVisualizationId'] ?? 0);
+            if ($returnVisualizationId > 0) {
+                $this->SetReturnVisualizationForClient($clientId, $returnVisualizationId);
+            }
+            $sourceClientId = (string) ($grant['sourceClientId'] ?? '');
+            if ($sourceClientId !== '') {
+                $this->RemoveAuthorization($sourceClientId);
+            }
+            unset($grants[$key]);
+            break;
+        }
+        $this->SetJsonBuffer('PendingParentGrants', $grants);
+    }
+
+    private function SetReturnVisualizationForClient(string $clientId, int $visualizationId): void
+    {
+        $returns = $this->GetJsonBuffer('ReturnVisualizationByClient');
+        $returns[$clientId] = $visualizationId;
+        $this->SetJsonBuffer('ReturnVisualizationByClient', $returns);
+    }
+
+    private function GetReturnVisualizationForClient(string $clientId): int
+    {
+        $returns = $this->GetJsonBuffer('ReturnVisualizationByClient');
+        return (int) ($returns[$clientId] ?? 0);
     }
 
     private function Authorize(string $clientId): int
