@@ -5,6 +5,9 @@ declare(strict_types=1);
 class FritzKindersicherung extends IPSModuleStrict
 {
     private const HOSTFILTER_SERVICE_FRAGMENT = 'X_AVM-DE_HostFilter';
+    private const HOSTS_SERVICE_FRAGMENT = ':Hosts:';
+    private const HOST_INVENTORY_CACHE_SECONDS = 300;
+    private const FILTER_PROFILE_CACHE_SECONDS = 900;
 
     public function Create(): void
     {
@@ -37,6 +40,11 @@ class FritzKindersicherung extends IPSModuleStrict
         $this->SetBuffer('AuthClients', '{}');
         $this->SetBuffer('FailedClients', '{}');
         $this->SetBuffer('HostFilterService', '');
+        $this->SetBuffer('HostsService', '');
+        $this->SetBuffer('HostInventory', '');
+        $this->SetBuffer('HostInventoryTs', '0');
+        $this->SetBuffer('FilterProfiles', '');
+        $this->SetBuffer('FilterProfilesTs', '0');
         $this->SetBuffer('LastPayload', '');
     }
 
@@ -128,11 +136,97 @@ class FritzKindersicherung extends IPSModuleStrict
         }
     }
 
+    public function DiscoverDevices(): string
+    {
+        try {
+            $inventory = $this->GetHostInventory(true, true);
+            $existing = $this->GetRawDeviceRows();
+            $usedExisting = [];
+            $rows = [];
+            $online = 0;
+
+            foreach ($inventory as $host) {
+                $matchIndex = $this->FindMatchingDeviceRow($existing, $host, $usedExisting);
+                $old = $matchIndex !== null ? $existing[$matchIndex] : [];
+                if ($matchIndex !== null) {
+                    $usedExisting[$matchIndex] = true;
+                }
+
+                if ((bool) ($host['active'] ?? false)) {
+                    $online++;
+                }
+
+                $foundName = trim((string) ($host['friendlyName'] ?? ''));
+                if ($foundName === '') {
+                    $foundName = trim((string) ($host['hostName'] ?? ''));
+                }
+                if ($foundName === '') {
+                    $foundName = (string) ($host['ip'] ?? 'Unbekanntes Gerät');
+                }
+
+                $oldName = trim((string) ($old['Name'] ?? ''));
+                $profileName = trim((string) ($host['profileName'] ?? ''));
+                if ($profileName === '') {
+                    $profileName = trim((string) ($host['profileId'] ?? ''));
+                }
+
+                $rows[] = [
+                    'Enabled'   => $matchIndex !== null ? (bool) ($old['Enabled'] ?? false) : false,
+                    'Group'     => $matchIndex !== null ? trim((string) ($old['Group'] ?? '')) : '',
+                    'Name'      => $oldName !== '' ? $oldName : $foundName,
+                    'IP'        => (string) ($host['ip'] ?? ''),
+                    'MAC'       => (string) ($host['mac'] ?? ''),
+                    'Status'    => (bool) ($host['active'] ?? false) ? 'online' : 'offline',
+                    'Interface' => (string) ($host['interface'] ?? ''),
+                    'Profile'   => $profileName
+                ];
+            }
+
+            // Bereits konfigurierte Geräte nicht verlieren, wenn sie bei einer Suche gerade fehlen.
+            foreach ($existing as $idx => $old) {
+                if (isset($usedExisting[$idx])) {
+                    continue;
+                }
+                $ip = trim((string) ($old['IP'] ?? ''));
+                $mac = $this->NormalizeMac((string) ($old['MAC'] ?? ''));
+                if ($ip === '' && $mac === '') {
+                    continue; // alte BUILD1/2-Platzhalter verwerfen
+                }
+                $rows[] = [
+                    'Enabled'   => (bool) ($old['Enabled'] ?? false),
+                    'Group'     => trim((string) ($old['Group'] ?? '')),
+                    'Name'      => trim((string) ($old['Name'] ?? 'Gerät')) ?: 'Gerät',
+                    'IP'        => $ip,
+                    'MAC'       => $mac,
+                    'Status'    => 'nicht gefunden',
+                    'Interface' => trim((string) ($old['Interface'] ?? '')),
+                    'Profile'   => trim((string) ($old['Profile'] ?? ''))
+                ];
+            }
+
+            usort($rows, static function (array $a, array $b): int {
+                $aOnline = ($a['Status'] ?? '') === 'online' ? 0 : 1;
+                $bOnline = ($b['Status'] ?? '') === 'online' ? 0 : 1;
+                if ($aOnline !== $bOnline) {
+                    return $aOnline <=> $bOnline;
+                }
+                return strnatcasecmp((string) ($a['Name'] ?? ''), (string) ($b['Name'] ?? ''));
+            });
+
+            $this->UpdateFormField('Devices', 'values', json_encode($rows, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+
+            return count($rows) . ' Geräte gefunden/übernommen, davon ' . $online . ' aktuell online. '
+                . 'Neue Geräte sind aus Sicherheitsgründen deaktiviert. Gewünschte Geräte anhaken, Gruppe (z. B. Paul/Tom) eintragen und anschließend Übernehmen drücken.';
+        } catch (Throwable $e) {
+            return 'FEHLER bei der Gerätesuche: ' . $e->getMessage();
+        }
+    }
+
     public function TestConnection(): string
     {
         try {
             $service = $this->DiscoverHostFilterService(true);
-            $devices = $this->GetConfiguredDevices();
+            $devices = $this->GetResolvedConfiguredDevices();
             $sample = null;
             foreach ($devices as $device) {
                 if ($device['ip'] !== '') {
@@ -147,7 +241,7 @@ class FritzKindersicherung extends IPSModuleStrict
                 return 'OK – HostFilter gefunden. Testgerät ' . $sample['name'] . ' (' . $sample['ip'] . '): ' . $wan;
             }
 
-            return 'OK – TR-064 HostFilter gefunden. Bitte jetzt IPv4-Adressen der Geräte eintragen.';
+            return 'OK – TR-064 HostFilter gefunden. Jetzt "Geräte automatisch suchen/importieren" verwenden.';
         } catch (Throwable $e) {
             return 'FEHLER: ' . $e->getMessage();
         }
@@ -237,7 +331,7 @@ class FritzKindersicherung extends IPSModuleStrict
             return;
         }
 
-        $targets = array_values(array_filter($this->GetConfiguredDevices(), static fn(array $d): bool => $d['group'] === $group && $d['ip'] !== ''));
+        $targets = array_values(array_filter($this->GetResolvedConfiguredDevices(), static fn(array $d): bool => $d['group'] === $group && $d['ip'] !== ''));
         if ($targets === []) {
             $this->SendStatusToClient($clientId, 'Keine Geräte in dieser Gruppe gefunden.');
             return;
@@ -288,11 +382,16 @@ class FritzKindersicherung extends IPSModuleStrict
 
     private function BuildStatusPayload(string $message): array
     {
-        $devices = $this->GetConfiguredDevices();
+        $devices = $this->GetResolvedConfiguredDevices();
         $result = [];
+        $profileNames = [];
 
         if ($devices !== []) {
             $service = $this->DiscoverHostFilterService(false);
+            try {
+                $profileNames = $this->GetFilterProfileNames(false);
+            } catch (Throwable $ignored) {
+            }
             foreach ($devices as $device) {
                 if ($device['ip'] === '') {
                     continue;
@@ -302,6 +401,7 @@ class FritzKindersicherung extends IPSModuleStrict
                     'group' => $device['group'],
                     'name' => $device['name'],
                     'ip' => $device['ip'],
+                    'mac' => $device['mac'],
                     'wan' => 'error',
                     'disallow' => null,
                     'profile' => '',
@@ -314,7 +414,8 @@ class FritzKindersicherung extends IPSModuleStrict
                     // Die neuere API liefert Profil und Zeitbudget in einem Aufruf.
                     $entry = $this->SoapAction($service, 'GetHostEntryByIP', ['NewIPv4Address' => $device['ip']]);
                     $row['wan'] = (string) ($entry['NewWANAccess'] ?? 'error');
-                    $row['profile'] = (string) ($entry['NewFilterProfileID'] ?? '');
+                    $profileId = (string) ($entry['NewFilterProfileID'] ?? '');
+                    $row['profile'] = (string) ($profileNames[$profileId] ?? $profileId);
                     $row['timeUsed'] = (int) ($entry['NewTimeUsed'] ?? 0);
                     $row['timeMax'] = (int) ($entry['NewTimeMax'] ?? 0);
 
@@ -350,8 +451,18 @@ class FritzKindersicherung extends IPSModuleStrict
 
     private function DiscoverHostFilterService(bool $force): array
     {
+        return $this->DiscoverService(self::HOSTFILTER_SERVICE_FRAGMENT, 'HostFilterService', $force);
+    }
+
+    private function DiscoverHostsService(bool $force): array
+    {
+        return $this->DiscoverService(self::HOSTS_SERVICE_FRAGMENT, 'HostsService', $force);
+    }
+
+    private function DiscoverService(string $fragment, string $bufferName, bool $force): array
+    {
         if (!$force) {
-            $cached = $this->GetBuffer('HostFilterService');
+            $cached = $this->GetBuffer($bufferName);
             if ($cached !== '') {
                 $service = json_decode($cached, true);
                 if (is_array($service) && isset($service['base'], $service['serviceType'], $service['controlURL'])) {
@@ -386,7 +497,7 @@ class FritzKindersicherung extends IPSModuleStrict
                 }
                 foreach ($services as $node) {
                     $serviceType = $this->XpathChildText($xp, $node, 'serviceType');
-                    if (stripos($serviceType, self::HOSTFILTER_SERVICE_FRAGMENT) === false) {
+                    if (stripos($serviceType, $fragment) === false) {
                         continue;
                     }
                     $controlURL = $this->XpathChildText($xp, $node, 'controlURL');
@@ -398,16 +509,142 @@ class FritzKindersicherung extends IPSModuleStrict
                         'serviceType' => $serviceType,
                         'controlURL' => '/' . ltrim($controlURL, '/')
                     ];
-                    $this->SetBuffer('HostFilterService', json_encode($service, JSON_UNESCAPED_SLASHES));
+                    $this->SetBuffer($bufferName, json_encode($service, JSON_UNESCAPED_SLASHES));
                     return $service;
                 }
-                throw new Exception('X_AVM-DE_HostFilter wurde in tr64desc.xml nicht gefunden.');
+                throw new Exception($fragment . ' wurde in tr64desc.xml nicht gefunden.');
             } catch (Throwable $e) {
                 $lastError = $e->getMessage();
             }
         }
 
         throw new Exception('TR-064 nicht erreichbar: ' . $lastError);
+    }
+
+    private function GetHostInventory(bool $force, bool $enrich): array
+    {
+        $cached = $this->GetBuffer('HostInventory');
+        $cachedTs = (int) $this->GetBuffer('HostInventoryTs');
+        if (!$force && $cached !== '' && (time() - $cachedTs) < self::HOST_INVENTORY_CACHE_SECONDS) {
+            $value = json_decode($cached, true);
+            if (is_array($value)) {
+                return $value;
+            }
+        }
+
+        $service = $this->DiscoverHostsService($force);
+        $countResult = $this->SoapAction($service, 'GetHostNumberOfEntries', []);
+        $count = max(0, min(512, (int) ($countResult['NewHostNumberOfEntries'] ?? 0)));
+        $profileNames = [];
+        if ($enrich) {
+            try {
+                $profileNames = $this->GetFilterProfileNames(false);
+            } catch (Throwable $ignored) {
+            }
+        }
+
+        $byKey = [];
+        for ($i = 0; $i < $count; $i++) {
+            try {
+                $entry = $this->SoapAction($service, 'GetGenericHostEntry', ['NewIndex' => $i]);
+            } catch (Throwable $e) {
+                $this->SendDebug('HostImport', 'Index ' . $i . ': ' . $e->getMessage(), 0);
+                continue;
+            }
+
+            $ip = trim((string) ($entry['NewIPAddress'] ?? ''));
+            if ($ip === '' || filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) === false) {
+                continue; // HostFilter arbeitet mit IPv4
+            }
+
+            $mac = $this->NormalizeMac((string) ($entry['NewMACAddress'] ?? ''));
+            $row = [
+                'ip' => $ip,
+                'mac' => $mac,
+                'hostName' => trim((string) ($entry['NewHostName'] ?? '')),
+                'friendlyName' => '',
+                'active' => $this->ToBool($entry['NewActive'] ?? false),
+                'interface' => trim((string) ($entry['NewInterfaceType'] ?? '')),
+                'profileId' => '',
+                'profileName' => '',
+                'wan' => '',
+                'disallow' => null
+            ];
+
+            if ($enrich) {
+                try {
+                    $detail = $this->SoapAction($service, 'X_AVM-DE_GetSpecificHostEntryByIP', ['NewIPAddress' => $ip]);
+                    $row['friendlyName'] = trim((string) ($detail['NewX_AVM-DE_FriendlyName'] ?? ''));
+                    $row['profileId'] = trim((string) ($detail['NewX_AVM-DE_FilterProfileID'] ?? ''));
+                    $row['profileName'] = (string) ($profileNames[$row['profileId']] ?? '');
+                    $row['wan'] = trim((string) ($detail['NewX_AVM-DE_WANAccess'] ?? ''));
+                    if (isset($detail['NewX_AVM-DE_Disallow'])) {
+                        $row['disallow'] = $this->ToBool($detail['NewX_AVM-DE_Disallow']);
+                    }
+                    if (trim((string) ($detail['NewHostName'] ?? '')) !== '') {
+                        $row['hostName'] = trim((string) $detail['NewHostName']);
+                    }
+                } catch (Throwable $ignored) {
+                    // Der Basiseintrag reicht für den Import aus.
+                }
+            }
+
+            $key = $mac !== '' ? 'mac:' . $mac : 'ip:' . $ip;
+            if (!isset($byKey[$key]) || (!$byKey[$key]['active'] && $row['active'])) {
+                $byKey[$key] = $row;
+            }
+        }
+
+        $rows = array_values($byKey);
+        $this->SetBuffer('HostInventory', json_encode($rows, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+        $this->SetBuffer('HostInventoryTs', (string) time());
+        return $rows;
+    }
+
+    private function GetFilterProfileNames(bool $force): array
+    {
+        $cached = $this->GetBuffer('FilterProfiles');
+        $cachedTs = (int) $this->GetBuffer('FilterProfilesTs');
+        if (!$force && $cached !== '' && (time() - $cachedTs) < self::FILTER_PROFILE_CACHE_SECONDS) {
+            $value = json_decode($cached, true);
+            if (is_array($value)) {
+                return $value;
+            }
+        }
+
+        $service = $this->DiscoverHostFilterService(false);
+        $result = $this->SoapAction($service, 'GetFilterProfiles', []);
+        $xml = trim((string) ($result['NewFilterProfileList'] ?? ''));
+        if ($xml === '') {
+            return [];
+        }
+
+        $dom = new DOMDocument();
+        $loaded = @$dom->loadXML($xml);
+        if (!$loaded) {
+            $withoutDeclaration = preg_replace('/<\?xml[^>]*\?>/i', '', $xml) ?? $xml;
+            $loaded = @$dom->loadXML('<Root>' . $withoutDeclaration . '</Root>');
+        }
+        if (!$loaded) {
+            throw new Exception('Filterprofil-Liste ist kein gültiges XML.');
+        }
+
+        $xp = new DOMXPath($dom);
+        $nodes = $xp->query('//*[local-name()="FilterProfile"]');
+        $profiles = [];
+        if ($nodes !== false) {
+            foreach ($nodes as $node) {
+                $id = $this->XpathChildText($xp, $node, 'FilterProfileID');
+                $name = $this->XpathChildText($xp, $node, 'Name');
+                if ($id !== '') {
+                    $profiles[$id] = $name !== '' ? $name : $id;
+                }
+            }
+        }
+
+        $this->SetBuffer('FilterProfiles', json_encode($profiles, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+        $this->SetBuffer('FilterProfilesTs', (string) time());
+        return $profiles;
     }
 
     private function SoapAction(array $service, string $action, array $arguments): array
@@ -506,38 +743,130 @@ class FritzKindersicherung extends IPSModuleStrict
         return trim($list->item(0)->textContent);
     }
 
-    private function GetConfiguredDevices(): array
+    private function GetRawDeviceRows(): array
     {
         $decoded = json_decode($this->ReadPropertyString('Devices'), true);
-        if (!is_array($decoded)) {
-            return [];
-        }
+        return is_array($decoded) ? array_values(array_filter($decoded, 'is_array')) : [];
+    }
+
+    private function GetConfiguredDevices(): array
+    {
         $out = [];
-        foreach ($decoded as $row) {
-            if (!is_array($row) || !((bool) ($row['Enabled'] ?? true))) {
+        foreach ($this->GetRawDeviceRows() as $row) {
+            if (!((bool) ($row['Enabled'] ?? true))) {
                 continue;
             }
             $ip = trim((string) ($row['IP'] ?? ''));
             if ($ip !== '' && filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) === false) {
+                $ip = '';
+            }
+            $mac = $this->NormalizeMac((string) ($row['MAC'] ?? ''));
+            if ($ip === '' && $mac === '') {
                 continue;
             }
             $out[] = [
                 'group' => trim((string) ($row['Group'] ?? 'Geräte')) ?: 'Geräte',
                 'name' => trim((string) ($row['Name'] ?? 'Gerät')) ?: 'Gerät',
-                'ip' => $ip
+                'ip' => $ip,
+                'mac' => $mac
             ];
         }
         return $out;
     }
 
+    private function GetResolvedConfiguredDevices(): array
+    {
+        $devices = $this->GetConfiguredDevices();
+        if ($devices === []) {
+            return [];
+        }
+
+        $needsResolution = false;
+        foreach ($devices as $device) {
+            if ($device['mac'] !== '') {
+                $needsResolution = true;
+                break;
+            }
+        }
+        if (!$needsResolution) {
+            return $devices;
+        }
+
+        try {
+            $inventory = $this->GetHostInventory(false, false);
+            $byMac = [];
+            foreach ($inventory as $host) {
+                $mac = $this->NormalizeMac((string) ($host['mac'] ?? ''));
+                $ip = trim((string) ($host['ip'] ?? ''));
+                if ($mac !== '' && filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) !== false) {
+                    $byMac[$mac] = $ip;
+                }
+            }
+            foreach ($devices as &$device) {
+                if ($device['mac'] !== '' && isset($byMac[$device['mac']])) {
+                    $device['ip'] = $byMac[$device['mac']];
+                }
+            }
+            unset($device);
+        } catch (Throwable $e) {
+            $this->SendDebug('IP-Auflösung', $e->getMessage(), 0);
+        }
+
+        return $devices;
+    }
+
+    private function FindMatchingDeviceRow(array $existing, array $host, array $usedExisting): ?int
+    {
+        $hostMac = $this->NormalizeMac((string) ($host['mac'] ?? ''));
+        $hostIp = trim((string) ($host['ip'] ?? ''));
+
+        foreach ($existing as $idx => $row) {
+            if (isset($usedExisting[$idx])) {
+                continue;
+            }
+            $rowMac = $this->NormalizeMac((string) ($row['MAC'] ?? ''));
+            if ($hostMac !== '' && $rowMac !== '' && hash_equals($hostMac, $rowMac)) {
+                return $idx;
+            }
+        }
+        foreach ($existing as $idx => $row) {
+            if (isset($usedExisting[$idx])) {
+                continue;
+            }
+            $rowIp = trim((string) ($row['IP'] ?? ''));
+            if ($hostIp !== '' && $rowIp !== '' && hash_equals($hostIp, $rowIp)) {
+                return $idx;
+            }
+        }
+        return null;
+    }
+
     private function IsConfiguredIP(string $ip): bool
     {
-        foreach ($this->GetConfiguredDevices() as $device) {
+        foreach ($this->GetResolvedConfiguredDevices() as $device) {
             if ($device['ip'] !== '' && hash_equals($device['ip'], $ip)) {
                 return true;
             }
         }
         return false;
+    }
+
+    private function NormalizeMac(string $mac): string
+    {
+        $hex = strtoupper(preg_replace('/[^0-9A-Fa-f]/', '', $mac) ?? '');
+        if (strlen($hex) !== 12) {
+            return '';
+        }
+        return implode(':', str_split($hex, 2));
+    }
+
+    private function ToBool(mixed $value): bool
+    {
+        if (is_bool($value)) {
+            return $value;
+        }
+        $v = strtolower(trim((string) $value));
+        return in_array($v, ['1', 'true', 'yes', 'on'], true);
     }
 
     private function Authorize(string $clientId): int

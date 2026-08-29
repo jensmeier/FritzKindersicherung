@@ -68,10 +68,14 @@
       ]
     },
     {
+      "type": "Label",
+      "caption": "Geräte automatisch suchen: Neue Geräte werden absichtlich NICHT aktiviert. Gewünschte Geräte anhaken, Person/Gruppe (z. B. Paul oder Tom) eintragen und danach Übernehmen drücken."
+    },
+    {
       "type": "List",
       "name": "Devices",
-      "caption": "Geräte (am besten in der FRITZ!Box feste IPv4-Adresse vergeben)",
-      "rowCount": 8,
+      "caption": "Geräte aus der FRITZ!Box",
+      "rowCount": 12,
       "add": true,
       "delete": true,
       "columns": [
@@ -79,42 +83,68 @@
           "caption": "Aktiv",
           "name": "Enabled",
           "width": "60px",
-          "add": true,
+          "add": false,
           "edit": { "type": "CheckBox" }
         },
         {
           "caption": "Person/Gruppe",
           "name": "Group",
-          "width": "130px",
-          "add": "Paul",
+          "width": "120px",
+          "add": "",
           "edit": { "type": "ValidationTextBox" }
         },
         {
           "caption": "Gerätename",
           "name": "Name",
-          "width": "auto",
+          "width": "220px",
           "add": "",
           "edit": { "type": "ValidationTextBox" }
         },
         {
           "caption": "IPv4-Adresse",
           "name": "IP",
-          "width": "140px",
+          "width": "130px",
           "add": "",
           "edit": { "type": "ValidationTextBox" }
+        },
+        {
+          "caption": "MAC-Adresse",
+          "name": "MAC",
+          "width": "145px",
+          "add": "",
+          "edit": { "type": "ValidationTextBox" }
+        },
+        {
+          "caption": "Status",
+          "name": "Status",
+          "width": "90px",
+          "add": "manuell"
+        },
+        {
+          "caption": "Verbindung",
+          "name": "Interface",
+          "width": "95px",
+          "add": ""
+        },
+        {
+          "caption": "FRITZ!-Profil",
+          "name": "Profile",
+          "width": "160px",
+          "add": ""
         }
       ],
-      "values": [
-        { "Enabled": true, "Group": "Paul", "Name": "Pauls Handy", "IP": "" },
-        { "Enabled": true, "Group": "Paul", "Name": "Paul Gaming-PC", "IP": "" },
-        { "Enabled": true, "Group": "Tom", "Name": "Toms Gerät", "IP": "" }
-      ]
+      "values": []
     }
   ],
   "actions": [
     {
       "type": "Label",
-      "caption": "BUILD1 startet absichtlich im Testmodus. Erst wenn Lesen und PIN funktionieren, Testmodus deaktivieren."
+      "caption": "BUILD3: Automatischer Geräteimport über den offiziellen TR-064 Hosts-Dienst. Der Testmodus bleibt für die Inbetriebnahme empfohlen."
+    },
+    {
+      "type": "Button",
+      "caption": "Geräte automatisch suchen / importieren",
+      "onClick": "echo FKS_DiscoverDevices($id);"
     },
     {
       "type": "Button",

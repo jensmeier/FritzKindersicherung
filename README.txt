@@ -1,7 +1,17 @@
-FRITZ!Box Kindersicherung für IP-Symcon – BUILD2
+
+BUILD3 – Automatischer Geräteimport
+----------------------------------
+- Geräte werden über den offiziellen TR-064 Hosts-Dienst automatisch gefunden.
+- Importiert werden Gerätename, IPv4, MAC, Online-Status, Verbindungstyp und – sofern verfügbar – FRITZ!-Zugangsprofil.
+- Neue gefundene Geräte sind standardmäßig deaktiviert. Erst Haken setzen, Gruppe zuweisen und Konfiguration übernehmen.
+- MAC-Adresse wird gespeichert. Bei später geänderter IPv4 versucht das Modul die aktuelle IPv4 automatisch wieder über die MAC-Adresse zu ermitteln (5-Minuten-Cache).
+- Bereits konfigurierte Geräte/Gruppen bleiben bei erneuter Suche erhalten.
+- Testmodus bleibt standardmäßig aktiv.
+
+FRITZ!Box Kindersicherung für IP-Symcon – BUILD3
 =================================================
 
-Ziel von BUILD2
+Ziel von BUILD3
 ---------------
 - PIN-geschützte HTML-SDK-Kachel
 - PIN wird serverseitig geprüft; keine FRITZ!Box-Zugangsdaten/PIN im Kachel-HTML
@@ -10,7 +20,7 @@ Ziel von BUILD2
 - 3 falsche PINs => 30 s Eingabesperre
 - Status lesen: Internet erlaubt/gesperrt, Profil-ID, Zeitverbrauch/Zeitbudget (wenn FRITZ!OS dies liefert)
 - Geräte einzeln oder gruppenweise sperren/freigeben
-- WICHTIG: Standard ist TESTMODUS = nur lesen. Im Testmodus verändert BUILD2 nichts an der FRITZ!Box.
+- WICHTIG: Standard ist TESTMODUS = nur lesen. Im Testmodus verändert BUILD3 nichts an der FRITZ!Box.
 
 Voraussetzungen
 ---------------
@@ -43,7 +53,7 @@ Hinweis zu "Freigeben"
 "Freigeben" entfernt die zusätzliche Disallow-Sperre der FRITZ!Box. Ein bestehendes Zugangsprofil kann das
 Internet trotzdem weiterhin sperren, z. B. wegen Zeitplan oder aufgebrauchtem Zeitbudget. Das ist von AVM so vorgesehen.
 
-Geplant für BUILD2
+Geplant für BUILD3
 ------------------
 - FRITZ!Box-Zugangsprofile mit Namen statt nur Profil-ID anzeigen
 - Profilwechsel direkt aus der Kachel
