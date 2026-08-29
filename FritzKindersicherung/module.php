@@ -25,6 +25,11 @@ class FritzKindersicherung extends IPSModuleStrict
         $this->RegisterPropertyInteger('RefreshSeconds', 60);
         $this->RegisterPropertyString('Devices', '[]');
 
+        // BUILD8: zentraler, nur lesbarer Status für zusätzliche Anzeige-Kacheln.
+        // Die Variable wird versteckt angelegt und enthält keine Zugangsdaten/PINs.
+        $this->RegisterVariableString('PublicStatus', 'Status für Zusatzanzeigen', '', 1000);
+        IPS_SetHidden($this->GetIDForIdent('PublicStatus'), true);
+
         $this->RegisterTimer('RefreshTimer', 0, 'FKS_Refresh($_IPS["TARGET"]);');
     }
 
@@ -36,6 +41,7 @@ class FritzKindersicherung extends IPSModuleStrict
         // Typ 2 führte auf dem Zielsystem zu einer leeren Darstellung und ersetzte die PIN-Kachel durch die Listenansicht.
         // Typ 1 stellt die funktionierende PIN-geschützte Kachel wieder her.
         $this->SetVisualizationType(1);
+        IPS_SetHidden($this->GetIDForIdent('PublicStatus'), true);
 
         $refresh = max(15, $this->ReadPropertyInteger('RefreshSeconds'));
         $this->SetTimerInterval('RefreshTimer', $refresh * 1000);
@@ -56,6 +62,35 @@ class FritzKindersicherung extends IPSModuleStrict
     public function GetVisualizationTile(): string
     {
         return (string) file_get_contents(__DIR__ . '/module.html');
+    }
+
+    /**
+     * Liefert den zuletzt ermittelten Status für reine Anzeige-Module.
+     * Enthält bewusst keine FRITZ!Box-Zugangsdaten und keine PIN.
+     */
+    public function GetPublicStatus(): string
+    {
+        $value = (string) GetValueString($this->GetIDForIdent('PublicStatus'));
+        if ($value !== '') {
+            return $value;
+        }
+
+        $cached = $this->GetBuffer('LastPayload');
+        if ($cached !== '') {
+            return $cached;
+        }
+
+        try {
+            $payload = $this->BuildStatusPayload('Status für Zusatzanzeige geladen ' . date('H:i:s'));
+            return json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        } catch (Throwable $e) {
+            return json_encode([
+                'readOnly' => true,
+                'devices' => [],
+                'issuedTickets' => [],
+                'message' => 'Noch keine Daten: ' . $e->getMessage()
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        }
     }
 
     public function RequestAction(string $Ident, mixed $Value): void
@@ -673,7 +708,9 @@ class FritzKindersicherung extends IPSModuleStrict
             'issuedTickets' => $this->GetIssuedTicketStatus(),
             'message' => $message
         ];
-        $this->SetBuffer('LastPayload', json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+        $json = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        $this->SetBuffer('LastPayload', $json);
+        SetValueString($this->GetIDForIdent('PublicStatus'), $json);
         return $payload;
     }
 

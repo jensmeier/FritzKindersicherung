@@ -1,0 +1,78 @@
+{
+  "elements": [
+    {
+      "type": "ExpansionPanel",
+      "caption": "Datenquelle",
+      "expanded": true,
+      "items": [
+        {
+          "type": "SelectModule",
+          "name": "SourceInstance",
+          "caption": "FRITZ!Box Kindersicherung",
+          "moduleID": "{8FD44702-1516-4F0D-A8A2-50F8840D6946}"
+        }
+      ]
+    },
+    {
+      "type": "ExpansionPanel",
+      "caption": "1x1-Kachel",
+      "expanded": true,
+      "items": [
+        {
+          "type": "NumberSpinner",
+          "name": "RotateSeconds",
+          "caption": "Nächste Person/Gruppe nach",
+          "suffix": " Sekunden",
+          "minimum": 2,
+          "maximum": 60
+        },
+        {
+          "type": "CheckBox",
+          "name": "ShowTickets",
+          "caption": "Zusatz-Tickets anzeigen"
+        },
+        {
+          "type": "CheckBox",
+          "name": "ShowOnlineCount",
+          "caption": "Online-Geräte anzeigen"
+        }
+      ]
+    },
+    {
+      "type": "List",
+      "name": "Groups",
+      "caption": "Im Wechsel anzeigen",
+      "rowCount": 8,
+      "add": false,
+      "delete": false,
+      "columns": [
+        {
+          "caption": "Anzeigen",
+          "name": "Enabled",
+          "width": "80px",
+          "edit": {
+            "type": "CheckBox"
+          }
+        },
+        {
+          "caption": "Person / Gruppe",
+          "name": "Group",
+          "width": "220px"
+        }
+      ],
+      "values": [],
+      "loadValuesFromConfiguration": false
+    }
+  ],
+  "actions": [
+    {
+      "type": "Label",
+      "caption": "Die Gruppen werden automatisch aus der ausgewählten Kindersicherung übernommen. Ohne gespeicherte Auswahl werden alle vorhandenen Gruppen angezeigt. Die Kachel passt Schrift und Inhalt automatisch an die tatsächlich verfügbare Kachelgröße an."
+    },
+    {
+      "type": "Button",
+      "caption": "Anzeige jetzt aktualisieren",
+      "onClick": "OZK_Refresh($id); echo 'Anzeige aktualisiert';"
+    }
+  ]
+}

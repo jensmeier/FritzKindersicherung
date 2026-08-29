@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+</head>
+<body>
+<div id="ozk" class="ozkRoot">
+  <div id="empty" class="emptyState">Onlinezeiten werden geladen …</div>
+  <div id="slide" class="slide" hidden>
+    <div class="topline">
+      <div id="group" class="group">—</div>
+      <div id="online" class="online"></div>
+    </div>
+    <div id="time" class="time">—</div>
+    <div id="label" class="label">Restzeit heute</div>
+    <div id="profile" class="profile"></div>
+    <div id="tickets" class="tickets"></div>
+    <div id="dots" class="dots" aria-hidden="true"></div>
+  </div>
+</div>
+<style>
+  *{box-sizing:border-box}
+  html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--content-color,#111)}
+  .ozkRoot{height:100%;min-height:0;padding:38px 7px 5px;display:flex;align-items:stretch;justify-content:stretch}
+  .emptyState{margin:auto;text-align:center;font-size:12px;line-height:1.25;opacity:.62;padding:8px}
+  .slide{width:100%;height:100%;min-height:0;display:flex;flex-direction:column;justify-content:center;overflow:hidden}
+  .topline{display:flex;align-items:center;gap:6px;min-width:0}
+  .group{font-weight:750;font-size:var(--group-size,18px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.05;min-width:0;flex:1}
+  .online{font-size:var(--small-size,10px);opacity:.72;white-space:nowrap;flex:0 0 auto}
+  .online:before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:#42ad7b;margin-right:4px;vertical-align:1px}
+  .time{font-size:var(--time-size,34px);font-weight:800;line-height:.96;letter-spacing:-.035em;white-space:nowrap;margin-top:4px}
+  .label{font-size:var(--small-size,10px);opacity:.68;line-height:1.05;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .profile{font-size:var(--small-size,10px);opacity:.74;line-height:1.1;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .tickets{font-size:var(--ticket-size,11px);font-weight:650;line-height:1.1;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .dots{display:flex;justify-content:center;gap:4px;margin-top:auto;padding-top:4px;min-height:7px}
+  .dots i{display:block;width:5px;height:5px;border-radius:50%;background:currentColor;opacity:.18}
+  .dots i.active{opacity:.72}
+  body.tiny .profile{display:none}
+  body.tiny .label{margin-top:1px}
+  body.tiny .tickets{margin-top:2px}
+  body.veryShort .profile,body.veryShort .dots{display:none}
+  body.veryShort .ozkRoot{padding-top:34px;padding-bottom:1px}
+</style>
+<script>
+(()=>{
+  const root=document.getElementById('ozk');
+  const el={empty:document.getElementById('empty'),slide:document.getElementById('slide'),group:document.getElementById('group'),online:document.getElementById('online'),time:document.getElementById('time'),label:document.getElementById('label'),profile:document.getElementById('profile'),tickets:document.getElementById('tickets'),dots:document.getElementById('dots')};
+  let groups=[],index=0,rotateSeconds=5,showTickets=true,showOnline=true,timer=null;
+
+  function send(op){
+    const value=JSON.stringify({op});
+    if(typeof requestAction==='function') requestAction('command',value);
+  }
+  function fmt(sec){
+    sec=Math.max(0,Number(sec)||0);
+    const h=Math.floor(sec/3600),m=Math.floor((sec%3600)/60);
+    if(h>0) return `${h} h ${m} min`;
+    return `${m} min`;
+  }
+  function applySizing(){
+    const w=Math.max(1,root.clientWidth||document.documentElement.clientWidth||240);
+    const h=Math.max(1,root.clientHeight||document.documentElement.clientHeight||150);
+    const time=Math.max(22,Math.min(48,Math.floor(Math.min(w/5.0,h/3.15))));
+    const group=Math.max(13,Math.min(22,Math.floor(time*.52)));
+    const small=Math.max(9,Math.min(13,Math.floor(time*.29)));
+    const ticket=Math.max(10,Math.min(14,Math.floor(time*.32)));
+    root.style.setProperty('--time-size',time+'px');
+    root.style.setProperty('--group-size',group+'px');
+    root.style.setProperty('--small-size',small+'px');
+    root.style.setProperty('--ticket-size',ticket+'px');
+    document.body.classList.toggle('tiny',w<190||h<135);
+    document.body.classList.toggle('veryShort',h<105);
+  }
+  function renderDots(){
+    el.dots.innerHTML='';
+    if(groups.length<=1) return;
+    groups.forEach((_,i)=>{const d=document.createElement('i');if(i===index)d.className='active';el.dots.appendChild(d);});
+  }
+  function render(){
+    if(!groups.length){
+      el.slide.hidden=true;el.empty.hidden=false;el.empty.textContent='Keine Gruppe für die Anzeige aktiviert.';return;
+    }
+    if(index>=groups.length) index=0;
+    const g=groups[index];
+    el.empty.hidden=true;el.slide.hidden=false;
+    el.group.textContent=g.group||'—';
+    el.time.textContent=g.rest===null||g.rest===undefined?'—':fmt(g.rest);
+    el.label.textContent=g.rest===null||g.rest===undefined?'kein gemeinsames Zeitbudget':'Restzeit heute';
+    el.profile.textContent=g.profile?`Profil: ${g.profile}`:'';
+    el.online.style.display=showOnline?'block':'none';
+    el.online.textContent=showOnline?`${Number(g.online)||0}/${Number(g.total)||0}`:'';
+    el.tickets.style.display=showTickets?'block':'none';
+    if(showTickets){
+      const n=Number(g.tickets)||0, mins=Number(g.ticketMinutes)||0;
+      el.tickets.textContent=`Tickets: ${n}${mins>0?` · ${mins} min aktiv`:''}`;
+    }
+    renderDots();applySizing();
+  }
+  function restartTimer(){
+    if(timer) clearInterval(timer);
+    if(groups.length>1){
+      timer=setInterval(()=>{index=(index+1)%groups.length;render();},Math.max(2,rotateSeconds)*1000);
+    }
+  }
+  function accept(data){
+    const keepName=groups[index]?.group||'';
+    groups=Array.isArray(data.groups)?data.groups:[];
+    rotateSeconds=Math.max(2,Number(data.rotateSeconds)||5);
+    showTickets=data.showTickets!==false;
+    showOnline=data.showOnlineCount!==false;
+    const found=groups.findIndex(g=>g.group===keepName);index=found>=0?found:0;
+    render();restartTimer();
+  }
+  window.handleMessage=(message)=>{
+    try{
+      const msg=typeof message==='string'?JSON.parse(message):message;
+      if(msg&&msg.kind==='status'&&msg.payload) accept(msg.payload);
+    }catch(e){}
+  };
+  if(typeof ResizeObserver!=='undefined') new ResizeObserver(applySizing).observe(root);
+  window.addEventListener('resize',applySizing,{passive:true});
+  applySizing();
+  send('hello');
+})();
+</script>
+</body>
+</html>

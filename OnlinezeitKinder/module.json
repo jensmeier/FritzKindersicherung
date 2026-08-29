@@ -1,0 +1,14 @@
+{
+  "id": "{7F6A08F1-4B84-4B6A-A852-8EACDAF9B1D4}",
+  "name": "OnlinezeitKinder",
+  "type": 3,
+  "vendor": "FRITZ! / JZCG",
+  "aliases": [
+    "Onlinezeit Kinder"
+  ],
+  "parentRequirements": [],
+  "childRequirements": [],
+  "implemented": [],
+  "prefix": "OZK",
+  "url": "https://github.com/jensmeier/FritzKindersicherung"
+}

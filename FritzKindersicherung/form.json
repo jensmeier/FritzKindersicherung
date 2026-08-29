@@ -149,7 +149,7 @@
   "actions": [
     {
       "type": "Label",
-      "caption": "BUILD6: Symcon-9-Vollbildmodus aktiviert (HTML-SDK Typ 2), Abstand zum Symcon-Kacheltitel korrigiert, 2x2-PIN/Toolbar ohne Überlappung und Gruppen mit Restzeit werden in der Kompaktansicht zuerst gezeigt."
+      "caption": "BUILD8: Zusätzliche 1x1-Anzeigekachel „Onlinezeit Kinder“ ergänzt. Hauptkachel bleibt PIN-geschützt; Statusdaten werden ohne Zugangsdaten zentral bereitgestellt."
     },
     {
       "type": "Button",

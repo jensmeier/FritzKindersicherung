@@ -19,3 +19,11 @@ BUILD7:
 - Regression aus BUILD6 behoben: SetVisualizationType wieder auf 1.
 - PIN-Kachel wird dadurch wieder direkt als HTML-SDK-Kachel dargestellt.
 - Vollbild über den Symcon-Pfeil bleibt vorerst deaktiviert/ungeeignet; die kompakte 2x2-Kachel bleibt funktionsfähig.
+
+BUILD8
+- Neue separate Instanz/Kachel „Onlinezeit Kinder“ für 1x1.
+- Wechselt standardmäßig alle 5 Sekunden durch die in der Hauptinstanz vorhandenen Gruppen.
+- Im Modulmenü lassen sich Gruppen einzeln ein-/ausblenden und das Wechselintervall 2–60 s einstellen.
+- Zeigt Restzeit, Profil, Zusatz-Tickets und optional Online-Geräte.
+- Reine Anzeige ohne PIN und ohne Schaltbefehle; die geschützte Hauptkachel bleibt unverändert.
+- Automatische Größenanpassung anhand der tatsächlich verfügbaren Kachelbreite/-höhe (ResizeObserver), nicht anhand einer fest angenommenen Tablet-Zollgröße.
