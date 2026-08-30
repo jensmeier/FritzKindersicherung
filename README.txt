@@ -1,4 +1,4 @@
-FRITZ!Box Kindersicherung – BUILD19
+FRITZ!Box Kindersicherung – BUILD20
 
 Basis: BUILD9 (stabile Hauptkachel + Onlinezeit Kinder).
 
@@ -73,3 +73,17 @@ BUILD19:
 - Einheitliche Darstellung in Eltern-Popup, großer Hauptansicht, 2x2-Kompaktinfo und 1x1-Kachel „Onlinezeit Kinder“.
 - Schrift in der Elternansicht deutlich vergrößert: Gerätenamen, Status, Zusatzzeit, Profile, Gruppen, Ticketcodes und Schaltflächen.
 - PIN-/2x2-Kachel bleibt bewusst unverändert kompakt.
+
+
+BUILD20:
+- Eltern-Popup auf Android/Fully Kiosk explizit touch-scrollbar gemacht.
+- Eigenen internen Scrollcontainer mit overflow-y:auto, -webkit-overflow-scrolling:touch und touch-action:pan-y ergänzt.
+- Kopfzeile bleibt beim Scrollen oben sichtbar.
+- Scrollposition wird nach Aktualisieren, +45 min, Sperren/Freigeben und anderen Status-Neuladungen wiederhergestellt statt an den Anfang zu springen.
+- Windows-PC-Verhalten bleibt unverändert.
+
+BUILD21:
+- Popup-Elternansicht nutzt Dokument-Scrolling statt verschachteltem Scrollbereich (Android/Fully kompatibler).
+- Touch-Wischen erzwingt bei Bedarf programmgesteuertes vertikales Scrollen.
+- Zusätzliche ▲/▼-Tasten in der Kopfzeile als sichere Scroll-Alternative.
+- Scrollposition bleibt bei Aktualisierungen erhalten.
