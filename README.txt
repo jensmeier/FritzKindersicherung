@@ -93,3 +93,5 @@ BUILD22: Tablet-Elternansicht ohne Scroll-Zwang: Gruppen-Tabs (Paul/Tom/...), ma
 BUILD23: Tablet-Erkennung erweitert (Android/Fully) und Umschaltknopf Kompakt/Vollansicht im Eltern-Popup.
 
 BUILD24: Tablet-Scroll korrigiert. Im Kompaktmodus wurde durch BUILD23 overflow:hidden gesetzt; dadurch konnte Fully nach der Initialisierung nicht mehr scrollen. BUILD24 nutzt wieder natives Android/Fully-Scrolling, entfernt den konkurrierenden JavaScript-Touch-Fallback, hält Kopfzeile und Gruppen-Tabs sticky und lässt ▲/▼ als Reserve sichtbar. Desktop-Verhalten unverändert.
+
+BUILD25: Fully-Kiosk-Fix: grosse eingebettete Elternansicht ist ein eigener Touch-Scrollcontainer; nativer Finger-Scroll plus JavaScript-Fallback und sichtbare ▲/▼-Tasten.

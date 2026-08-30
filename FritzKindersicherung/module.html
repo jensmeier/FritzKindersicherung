@@ -101,6 +101,41 @@ button:disabled { opacity:.40; cursor:not-allowed; }
   .ticketState { grid-column:1/3; }
   .actions { grid-column:3; grid-row:1/3; grid-template-columns:1fr; }
 }
+/* BUILD25: Touch-Scroll-Fallback fuer die GROSSE eingebettete Symcon-Kachel.
+   Fully Kiosk scrollt verschachtelte overflow-Bereiche in einem HTML-SDK-IFrame
+   je nach WebView nicht zuverlaessig. Darum wird bei grosser Touch-Ansicht der
+   komplette freigeschaltete Bereich zum einzigen Scrollcontainer. */
+#tileScrollUp, #tileScrollDown { display:none; }
+body.touchLarge #unlocked {
+  overflow-y:auto !important;
+  overflow-x:hidden !important;
+  -webkit-overflow-scrolling:touch;
+  touch-action:pan-y;
+  overscroll-behavior-y:contain;
+}
+body.touchLarge #fullView {
+  flex:0 0 auto !important;
+  min-height:auto !important;
+  overflow:visible !important;
+}
+body.touchLarge .groups {
+  flex:0 0 auto !important;
+  min-height:auto !important;
+  overflow:visible !important;
+}
+body.touchLarge #tileScrollUp,
+body.touchLarge #tileScrollDown { display:inline-block; }
+body.touchLarge .top {
+  position:sticky;
+  top:0;
+  z-index:20;
+  padding:4px 0;
+  background:rgba(245,245,245,.94);
+  backdrop-filter:blur(5px);
+}
+@media (prefers-color-scheme: dark) {
+  body.touchLarge .top { background:rgba(38,40,45,.94); }
+}
 body.compact #compactView { display:block; }
 body.compact #fullView { display:none; }
 body.compact .hint { display:block; }
@@ -140,6 +175,8 @@ body.compact .badge { font-size:9px; padding:3px 5px; }
     <div class="top">
       <div class="grow"></div>
       <span id="mode" class="badge"></span>
+      <button type="button" id="tileScrollUp" title="Nach oben">▲</button>
+      <button type="button" id="tileScrollDown" title="Nach unten">▼</button>
       <button type="button" id="refreshBtn" title="Aktualisieren">↻</button>
       <button type="button" id="popupBtn" title="Elternansicht öffnen">↗</button>
       <button type="button" id="lockBtn" title="Sperren">🔒</button>
@@ -494,8 +531,48 @@ function setUnlocked(data){
 function updateLayout(){
   const compact=window.innerWidth<560 || window.innerHeight<470;
   document.body.classList.toggle('compact',compact);
+  const ua=String(navigator.userAgent||'');
+  const touchCapable=('ontouchstart' in window)||(Number(navigator.maxTouchPoints)||0)>0||/Android|Fully|FullyKiosk/i.test(ua);
+  const touchLarge=touchCapable&&!compact;
+  document.body.classList.toggle('touchLarge',touchLarge);
   if(lastData&&unlocked) render(lastData);
 }
+function embeddedScrollBy(dir){
+  const sc=document.getElementById('unlocked');
+  if(!sc) return;
+  const step=Math.max(180,Math.round(sc.clientHeight*0.72));
+  try{ sc.scrollBy({top:dir*step,left:0,behavior:'smooth'}); }
+  catch(e){ sc.scrollTop=Math.max(0,sc.scrollTop+dir*step); }
+}
+
+/* BUILD25: Eigener Finger-Scroll als Fallback fuer Fully Kiosk/WebView.
+   Er greift nur in der grossen Touch-Ansicht und nicht auf Buttons/Selects. */
+(function installEmbeddedTouchScroll(){
+  const sc=document.getElementById('unlocked');
+  if(!sc) return;
+  let active=false,lastY=0,moved=false;
+  sc.addEventListener('touchstart',e=>{
+    if(!document.body.classList.contains('touchLarge')) return;
+    const t=e.target;
+    if(t&&t.closest&&t.closest('button,select,input,textarea,a')) return;
+    if(!e.touches||e.touches.length!==1) return;
+    active=true; moved=false; lastY=e.touches[0].clientY;
+  },{passive:true});
+  sc.addEventListener('touchmove',e=>{
+    if(!active||!document.body.classList.contains('touchLarge')||!e.touches||e.touches.length!==1) return;
+    const y=e.touches[0].clientY;
+    const dy=lastY-y;
+    if(Math.abs(dy)>1){
+      sc.scrollTop+=dy;
+      lastY=y;
+      moved=true;
+      if(e.cancelable) e.preventDefault();
+    }
+  },{passive:false});
+  const stop=()=>{active=false;moved=false;};
+  sc.addEventListener('touchend',stop,{passive:true});
+  sc.addEventListener('touchcancel',stop,{passive:true});
+})();
 function refresh(){ if(unlocked) send('refresh'); }
 function lockNow(){ send('lock'); setLocked('Gesperrt.'); closeParentPopup(); }
 function act(ip,disallow){ if(unlocked) send('set_disallow',{ip,disallow}); }
@@ -692,6 +769,8 @@ document.querySelectorAll('[data-digit]').forEach(b=>b.addEventListener('click',
 document.getElementById('backspace').addEventListener('click',clearPin);
 document.getElementById('pinOk').addEventListener('click',submitPin);
 document.getElementById('refreshBtn').addEventListener('click',refresh);
+document.getElementById('tileScrollUp').addEventListener('click',()=>embeddedScrollBy(-1));
+document.getElementById('tileScrollDown').addEventListener('click',()=>embeddedScrollBy(1));
 document.getElementById('popupBtn').addEventListener('click',openParentPopupNow);
 document.getElementById('lockBtn').addEventListener('click',lockNow);
 window.addEventListener('resize',updateLayout);

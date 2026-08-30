@@ -173,7 +173,7 @@
   "actions": [
     {
       "type": "Label",
-      "caption": "BUILD23: Android/Fully wird automatisch als kompakte Elternansicht erkannt; Ansicht im Popup manuell umschaltbar."
+      "caption": "BUILD25: Touch-Scroll-Fallback auch direkt in der grossen Symcon-Kachel; ▲/▼ werden dort auf Android/Fully eingeblendet. Popup und PC bleiben erhalten."
     },
     {
       "type": "Button",
