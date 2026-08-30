@@ -89,3 +89,5 @@ BUILD21:
 - Scrollposition bleibt bei Aktualisierungen erhalten.
 
 BUILD22: Tablet-Elternansicht ohne Scroll-Zwang: Gruppen-Tabs (Paul/Tom/...), max. 5 Geräte pro Seite mit Vor/Zurück. Desktop bleibt vollständige Listenansicht.
+
+BUILD23: Tablet-Erkennung erweitert (Android/Fully) und Umschaltknopf Kompakt/Vollansicht im Eltern-Popup.

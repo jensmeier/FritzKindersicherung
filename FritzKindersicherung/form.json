@@ -173,7 +173,7 @@
   "actions": [
     {
       "type": "Label",
-      "caption": "BUILD17: Popup schaltbar; Ticket-/Zusatzzeit-Anzeige korrigiert; Geräte-Metadaten werden gespeichert."
+      "caption": "BUILD23: Android/Fully wird automatisch als kompakte Elternansicht erkannt; Ansicht im Popup manuell umschaltbar."
     },
     {
       "type": "Button",
