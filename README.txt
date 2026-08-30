@@ -87,3 +87,5 @@ BUILD21:
 - Touch-Wischen erzwingt bei Bedarf programmgesteuertes vertikales Scrollen.
 - Zusätzliche ▲/▼-Tasten in der Kopfzeile als sichere Scroll-Alternative.
 - Scrollposition bleibt bei Aktualisierungen erhalten.
+
+BUILD22: Tablet-Elternansicht ohne Scroll-Zwang: Gruppen-Tabs (Paul/Tom/...), max. 5 Geräte pro Seite mit Vor/Zurück. Desktop bleibt vollständige Listenansicht.
