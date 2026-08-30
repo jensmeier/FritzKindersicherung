@@ -173,7 +173,7 @@
   "actions": [
     {
       "type": "Label",
-      "caption": "BUILD25: Touch-Scroll-Fallback auch direkt in der grossen Symcon-Kachel; ▲/▼ werden dort auf Android/Fully eingeblendet. Popup und PC bleiben erhalten."
+      "caption": "BUILD27: Zugangsprofile können direkt am Tablet/PC umgeschaltet werden. Neue sichere Auswahlbox wie in der FRITZ!Box: Gerät einzeln oder ganze Gruppe auf ein vorhandenes Profil umstellen; Zeitplan/Budget/Profile selbst bleiben FRITZ!Box-Aufgabe."
     },
     {
       "type": "Button",

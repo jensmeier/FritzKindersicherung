@@ -98,3 +98,8 @@ BUILD26: Fully-Kiosk-Fix: grosse eingebettete Elternansicht ist ein eigener Touc
 
 
 BUILD26: Elternansicht modernisiert: Übersicht und kompakte Ticketleiste bleiben stehen, nur Gerätegruppen scrollen; weißer Aktionsstreifen entfernt; Gruppenheader sticky; nur sinnvoller Sperren/Freigeben-Knopf; größere Schrift. Bei nicht gemeinsamem Zeitbudget wird zusätzlich die von FRITZ! gemeldete heutige Nutzungszeit pro Gerät angezeigt. Bei gemeinsamem Budget wird bewusst keine Einzelzeit behauptet, da TR-064 den gemeinsamen Verbrauch nicht zuverlässig pro Gerät trennt.
+
+BUILD27:
+- Zugangsprofil-Wechsel direkt in Symcon/Tablet für einzelne Geräte und ganze Gruppen.
+- Bewusster Dialog mit Abbrechen/Übernehmen, damit kein Profil versehentlich gewechselt wird.
+- Nur vorhandene Profile werden zugeordnet. Zeitpläne, Budgets, Filter und neue Profile werden weiterhin in der FRITZ!Box verwaltet.
