@@ -103,3 +103,10 @@ BUILD27:
 - Zugangsprofil-Wechsel direkt in Symcon/Tablet für einzelne Geräte und ganze Gruppen.
 - Bewusster Dialog mit Abbrechen/Übernehmen, damit kein Profil versehentlich gewechselt wird.
 - Nur vorhandene Profile werden zugeordnet. Zeitpläne, Budgets, Filter und neue Profile werden weiterhin in der FRITZ!Box verwaltet.
+
+
+BUILD28:
+- Heutige Online-/Nutzungszeit wird jetzt pro Gerät aus dem FRITZ!-Wert NewTimeUsed angezeigt – auch bei gemeinsamem Basisbudget.
+- Anzeige trennt klar: gemeinsamer Basis-Rest oben, 'Heute online' je Gerät und gerätebezogene Zusatzzeit.
+- Bei Geräten mit gemeinsamem Basisbudget wird vorübergehend zusätzlich der rohe NewTimeUsed-Wert in Sekunden angezeigt (Diagnose), damit auf der FRITZ!Box 5690 Pro geprüft werden kann, ob die Werte je IP wirklich getrennt laufen.
+- Popup-Elternansicht und große Symcon-Elternansicht zeigen dieselben Werte.
