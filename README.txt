@@ -94,4 +94,7 @@ BUILD23: Tablet-Erkennung erweitert (Android/Fully) und Umschaltknopf Kompakt/Vo
 
 BUILD24: Tablet-Scroll korrigiert. Im Kompaktmodus wurde durch BUILD23 overflow:hidden gesetzt; dadurch konnte Fully nach der Initialisierung nicht mehr scrollen. BUILD24 nutzt wieder natives Android/Fully-Scrolling, entfernt den konkurrierenden JavaScript-Touch-Fallback, hält Kopfzeile und Gruppen-Tabs sticky und lässt ▲/▼ als Reserve sichtbar. Desktop-Verhalten unverändert.
 
-BUILD25: Fully-Kiosk-Fix: grosse eingebettete Elternansicht ist ein eigener Touch-Scrollcontainer; nativer Finger-Scroll plus JavaScript-Fallback und sichtbare ▲/▼-Tasten.
+BUILD26: Fully-Kiosk-Fix: grosse eingebettete Elternansicht ist ein eigener Touch-Scrollcontainer; nativer Finger-Scroll plus JavaScript-Fallback und sichtbare ▲/▼-Tasten.
+
+
+BUILD26: Elternansicht modernisiert: Übersicht und kompakte Ticketleiste bleiben stehen, nur Gerätegruppen scrollen; weißer Aktionsstreifen entfernt; Gruppenheader sticky; nur sinnvoller Sperren/Freigeben-Knopf; größere Schrift. Bei nicht gemeinsamem Zeitbudget wird zusätzlich die von FRITZ! gemeldete heutige Nutzungszeit pro Gerät angezeigt. Bei gemeinsamem Budget wird bewusst keine Einzelzeit behauptet, da TR-064 den gemeinsamen Verbrauch nicht zuverlässig pro Gerät trennt.

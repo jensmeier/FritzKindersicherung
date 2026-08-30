@@ -12,7 +12,7 @@ button { border:0; border-radius:10px; min-height:40px; padding:8px 11px; cursor
 button.primary { background:#1473e6; color:white; }
 button.danger { background:#c73535; color:white; }
 button.ok { background:#238b57; color:white; }
-button.ticket { background:#6a5acd; color:white; }
+button.ticket { background:#1473e6; color:white; }
 button:disabled { opacity:.40; cursor:not-allowed; }
 #app { width:100%; height:100%; padding:42px 8px 8px; display:flex; flex-direction:column; gap:7px; min-width:0; min-height:0; }
 .card { background:rgba(127,127,127,.10); border:1px solid rgba(127,127,127,.22); border-radius:13px; padding:9px; min-width:0; }
@@ -69,73 +69,47 @@ button:disabled { opacity:.40; cursor:not-allowed; }
 .compactTicketLine { font-size:10px; opacity:.76; }
 
 /* Großansicht innerhalb großer Kachel / maximierter Ansicht. */
-#fullView { display:flex; flex:1; min-height:0; flex-direction:column; gap:7px; }
+#fullView { display:flex; flex:1; min-height:0; flex-direction:column; gap:7px; overflow:hidden; }
+#fixedArea { flex:0 0 auto; position:sticky; top:0; z-index:12; padding:1px 0 2px; background:rgba(127,127,127,.07); backdrop-filter:blur(8px); border-radius:14px; }
 .overview { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:7px; flex:0 0 auto; }
 .overviewCard { padding:8px 10px; display:grid; grid-template-columns:1fr auto; gap:3px 10px; align-items:center; }
 .overviewCard strong { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .overviewRest { font-size:22px; font-weight:800; }
 .overviewSmall { font-size:12px; opacity:.76; }
-.ticketPanel { display:flex; align-items:center; flex-wrap:wrap; gap:6px; padding:7px 9px; }
-.ticketPanel strong { margin-right:3px; }
+.ticketPanel { display:flex; align-items:center; flex-wrap:wrap; gap:7px; padding:7px 10px; margin-top:7px; border-radius:12px; background:rgba(127,127,127,.08); }
+.ticketPanel strong { margin-right:3px; font-size:14px; }
 .ticketCode { font-variant-numeric:tabular-nums; letter-spacing:1px; padding:4px 7px; border-radius:7px; background:rgba(127,127,127,.15); font-size:12px; }
 .ticketCode.used { opacity:.45; text-decoration:line-through; }
 .ticketPanel .note { font-size:12px; opacity:.70; }
-.groups { flex:1; min-height:0; overflow:auto; display:flex; flex-direction:column; gap:7px; }
-.groupHead { display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin-bottom:6px; }
+.ticketInfo { width:26px; height:26px; min-height:26px; padding:0; border-radius:50%; font-weight:800; opacity:.75; }
+.groups { flex:1; min-height:0; overflow:auto; display:flex; flex-direction:column; gap:8px; padding-top:1px; -webkit-overflow-scrolling:touch; touch-action:pan-y; overscroll-behavior-y:contain; }
+.groupHead { position:sticky; top:0; z-index:5; display:flex; flex-wrap:wrap; gap:7px; align-items:center; margin:-9px -9px 6px; padding:10px 10px 8px; border-bottom:1px solid rgba(127,127,127,.16); background:rgba(127,127,127,.10); backdrop-filter:blur(7px); }
 .groupHead strong { flex:1 1 100px; min-width:80px; }
 .groupBudget { font-size:13px; padding:5px 8px; border-radius:8px; background:rgba(127,127,127,.12); white-space:nowrap; }
 .profileSelect { max-width:230px; min-width:150px; border:1px solid rgba(127,127,127,.28); border-radius:8px; padding:7px 9px; font-size:14px; background:rgba(127,127,127,.10); color:inherit; }
 .profileSelect:disabled { opacity:.58; }
 .groupProfile { max-width:185px; }
-.device { display:grid; grid-template-columns:minmax(155px,1.5fr) minmax(115px,.8fr) minmax(90px,.7fr) auto; align-items:center; gap:8px; padding:7px 0; border-top:1px solid rgba(127,127,127,.15); }
-.devname { font-size:16px; font-weight:750; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.device { display:grid; grid-template-columns:minmax(165px,1.5fr) minmax(125px,.8fr) minmax(125px,.8fr) auto; align-items:center; gap:9px; padding:9px 10px; margin:5px 0; border:1px solid rgba(127,127,127,.12); border-radius:11px; background:rgba(127,127,127,.055); }
+.devname { font-size:17px; font-weight:800; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .metaLine { display:flex; align-items:center; flex-wrap:wrap; gap:5px; margin-top:2px; }
-.ipmeta, .timeinfo, .ticketinfo { font-size:12px; opacity:.76; white-space:nowrap; }
-.state { font-size:14px; }
-.ticketState { font-size:13px; line-height:1.35; }
-.actions { display:grid; grid-template-columns:repeat(3,auto); gap:5px; }
-.actions button { min-height:40px; padding:7px 10px; font-size:13px; }
+.ipmeta, .timeinfo, .ticketinfo { font-size:13px; opacity:.76; white-space:nowrap; }
+.state { font-size:15px; font-weight:650; }
+.ticketState { font-size:14px; line-height:1.35; }
+.actions { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:6px; }
+.actions button { min-height:42px; padding:8px 12px; font-size:14px; font-weight:650; }
 
 @media (max-width:780px) {
   .device { grid-template-columns:minmax(135px,1fr) minmax(105px,.7fr) auto; }
   .ticketState { grid-column:1/3; }
   .actions { grid-column:3; grid-row:1/3; grid-template-columns:1fr; }
 }
-/* BUILD25: Touch-Scroll-Fallback fuer die GROSSE eingebettete Symcon-Kachel.
-   Fully Kiosk scrollt verschachtelte overflow-Bereiche in einem HTML-SDK-IFrame
-   je nach WebView nicht zuverlaessig. Darum wird bei grosser Touch-Ansicht der
-   komplette freigeschaltete Bereich zum einzigen Scrollcontainer. */
+/* BUILD26: Im Elternmodus bleibt Übersicht + Ticketleiste stehen; nur die Gerätegruppen scrollen. */
 #tileScrollUp, #tileScrollDown { display:none; }
-body.touchLarge #unlocked {
-  overflow-y:auto !important;
-  overflow-x:hidden !important;
-  -webkit-overflow-scrolling:touch;
-  touch-action:pan-y;
-  overscroll-behavior-y:contain;
-}
-body.touchLarge #fullView {
-  flex:0 0 auto !important;
-  min-height:auto !important;
-  overflow:visible !important;
-}
-body.touchLarge .groups {
-  flex:0 0 auto !important;
-  min-height:auto !important;
-  overflow:visible !important;
-}
-body.touchLarge #tileScrollUp,
-body.touchLarge #tileScrollDown { display:inline-block; }
-body.touchLarge .top {
-  position:sticky;
-  top:0;
-  z-index:20;
-  padding:4px 0;
-  background:rgba(245,245,245,.94);
-  backdrop-filter:blur(5px);
-}
-@media (prefers-color-scheme: dark) {
-  body.touchLarge .top { background:rgba(38,40,45,.94); }
-}
+body.touchLarge #unlocked { overflow:hidden !important; }
+body.touchLarge #fullView { overflow:hidden !important; }
+body.touchLarge .groups { overflow-y:auto !important; overflow-x:hidden !important; -webkit-overflow-scrolling:touch; touch-action:pan-y; }
+body.touchLarge #tileScrollUp, body.touchLarge #tileScrollDown { display:inline-block; }
+body.touchLarge .top { background:transparent !important; position:relative; z-index:20; padding:0; min-height:34px; }
 body.compact #compactView { display:block; }
 body.compact #fullView { display:none; }
 body.compact .hint { display:block; }
@@ -189,8 +163,10 @@ body.compact .badge { font-size:9px; padding:3px 5px; }
     </div>
 
     <div id="fullView">
-      <div id="overview" class="overview"></div>
-      <div id="ticketPanel" class="card ticketPanel"></div>
+      <div id="fixedArea">
+        <div id="overview" class="overview"></div>
+        <div id="ticketPanel" class="card ticketPanel"></div>
+      </div>
       <div id="groups" class="groups"></div>
     </div>
   </div>
@@ -538,7 +514,7 @@ function updateLayout(){
   if(lastData&&unlocked) render(lastData);
 }
 function embeddedScrollBy(dir){
-  const sc=document.getElementById('unlocked');
+  const sc=document.getElementById('groups');
   if(!sc) return;
   const step=Math.max(180,Math.round(sc.clientHeight*0.72));
   try{ sc.scrollBy({top:dir*step,left:0,behavior:'smooth'}); }
@@ -548,7 +524,7 @@ function embeddedScrollBy(dir){
 /* BUILD25: Eigener Finger-Scroll als Fallback fuer Fully Kiosk/WebView.
    Er greift nur in der grossen Touch-Ansicht und nicht auf Buttons/Selects. */
 (function installEmbeddedTouchScroll(){
-  const sc=document.getElementById('unlocked');
+  const sc=document.getElementById('groups');
   if(!sc) return;
   let active=false,lastY=0,moved=false;
   sc.addEventListener('touchstart',e=>{
@@ -675,18 +651,15 @@ function renderOverview(summaries){
 }
 function renderTicketPanel(data){
   const p=document.getElementById('ticketPanel'); p.innerHTML='';
-  const title=document.createElement('strong'); title.textContent='Freie Ticketcodes (global, über Symcon)'; p.appendChild(title);
-  const codes=(data.issuedTickets||[]);
+  const title=document.createElement('strong'); title.textContent='🎟 Ticketcodes'; p.appendChild(title);
+  const codes=(data.issuedTickets||[]).filter(t=>t.status==='marked');
   if(codes.length){
-    codes.forEach(t=>{
-      const span=document.createElement('span'); span.className='ticketCode'+(t.status==='marked'?'':' used');
-      span.textContent=t.id+(t.status==='marked'?'':' · benutzt/ungültig'); p.appendChild(span);
-    });
+    codes.forEach(t=>{ const span=document.createElement('span'); span.className='ticketCode'; span.textContent=t.id; p.appendChild(span); });
   }else{
-    const note=document.createElement('span'); note.className='note'; note.textContent='Noch kein Ticketcode über Symcon erzeugt.'; p.appendChild(note);
+    const note=document.createElement('span'); note.className='note'; note.textContent='keine'; p.appendChild(note);
   }
-  const b=document.createElement('button'); b.className='ticket'; b.textContent='Neuen 45-min-Ticketcode holen'; b.disabled=data.readOnly; b.title='Markiert einen freien 6-stelligen FRITZ!-Ticketcode'; b.addEventListener('click',markTicket); p.appendChild(b);
-  const note=document.createElement('span'); note.className='note'; note.textContent='Codes sind global und werden erst beim Einlösen an fritz.box einem Gerät zugeordnet. Gezeigt werden nur Codes, die Symcon erzeugt hat.'; p.appendChild(note);
+  const b=document.createElement('button'); b.className='ticket'; b.textContent='+ Ticket'; b.disabled=data.readOnly; b.title='Neuen einmaligen 45-Minuten-Ticketcode erzeugen'; b.addEventListener('click',markTicket); p.appendChild(b);
+  const info=document.createElement('button'); info.className='ticketInfo'; info.textContent='i'; info.title='Ticketcodes sind global. Sie werden erst beim Einlösen auf fritz.box einem Gerät zugeordnet. Angezeigt werden nur Codes, die über Symcon erzeugt wurden.'; p.appendChild(info);
 }
 function renderFull(data,summaries){
   renderOverview(summaries); renderTicketPanel(data);
@@ -713,7 +686,10 @@ function renderFull(data,summaries){
       const ip=document.createElement('span'); ip.className='ipmeta'; ip.textContent=d.ip||''; meta.appendChild(ip);
       if(profiles.length){ const ps=makeProfileSelect(profiles,d.profileId||'',v=>setProfile(d.ip,v),d.profile||'Profil wählen',data.readOnly); meta.appendChild(ps); }
       else { const pr=document.createElement('span'); pr.className='ipmeta'; pr.textContent='Profil '+(d.profile||'—'); meta.appendChild(pr); }
-      if(Number(d.timeMax)>0 && !d.isTimeShared){ const t=document.createElement('span'); t.className='timeinfo'; t.textContent=`Rest ${fmt(Math.max(0,Number(d.timeMax)-Number(d.timeUsed)))}`; meta.appendChild(t); }
+      if(Number(d.timeMax)>0 && !d.isTimeShared){
+        const t=document.createElement('span'); t.className='timeinfo'; t.textContent=`Rest ${fmt(Math.max(0,Number(d.timeMax)-Number(d.timeUsed)))}`; meta.appendChild(t);
+        const used=document.createElement('span'); used.className='timeinfo'; used.textContent=`Heute genutzt ${fmt(Math.max(0,Number(d.timeUsed)))}`; used.title='Von der FRITZ!Box für dieses Gerät gemeldete heutige Nutzungszeit'; meta.appendChild(used);
+      }
       info.appendChild(meta); row.appendChild(info);
 
       const state=document.createElement('div'); state.className='state'; state.innerHTML=`<span class="dot ${st.cls}"></span>${esc(st.text)}`; row.appendChild(state);
@@ -723,9 +699,12 @@ function renderFull(data,summaries){
 
       const a=document.createElement('div'); a.className='actions';
       { const add=document.createElement('button'); add.className='ticket'; add.textContent='+45 min'; add.disabled=data.readOnly||Number(d.timeMax)<=0||d.disallow===true; add.title=d.disallow===true?'Gerät ist manuell gesperrt':(Number(d.timeMax)<=0?'Profil hat kein Zeitbudget/keinen Zeitplan':'45 Minuten Zusatzzeit gezielt für dieses Gerät'); add.addEventListener('click',()=>addTicketTime(d.ip,d.name||'Gerät')); a.appendChild(add); }
-      const s=document.createElement('button'); s.className='danger'; s.textContent='Sperren'; s.disabled=data.readOnly; s.addEventListener('click',()=>act(d.ip,true));
-      const f=document.createElement('button'); f.className='ok'; f.textContent='Freigeben'; f.disabled=data.readOnly; f.addEventListener('click',()=>act(d.ip,false));
-      a.appendChild(s); a.appendChild(f); row.appendChild(a); c.appendChild(row);
+      if(d.disallow===true){
+        const f=document.createElement('button'); f.className='ok'; f.textContent='Freigeben'; f.disabled=data.readOnly; f.addEventListener('click',()=>act(d.ip,false)); a.appendChild(f);
+      }else{
+        const s=document.createElement('button'); s.className='danger'; s.textContent='Sperren'; s.disabled=data.readOnly; s.addEventListener('click',()=>act(d.ip,true)); a.appendChild(s);
+      }
+      row.appendChild(a); c.appendChild(row);
     });
     root.appendChild(c);
   });
